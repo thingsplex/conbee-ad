@@ -1,0 +1,14 @@
+[Unit]
+Description=IoT Flow logic engine
+
+[Service]
+Type=simple
+ExecStart=/opt/thingsplex/conbee-ad/conbee-ad -c config.json
+User=conbee-ad
+WorkingDirectory=/opt/thingsplex/conbee-ad
+Restart=always
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
