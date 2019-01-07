@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/alivinco/conbee-ad/model"
 	"github.com/alivinco/conbee-ad/zigbee"
-	log "github.com/sirupsen/logrus"
+	"github.com/futurehomeno/fimpgo"
+	log "github.com/Sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io/ioutil"
 )
@@ -56,7 +57,16 @@ func main() {
 	SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
 	log.Info("--------------Starting ThingsPlexServiceTemplate----------------")
 
-	conFimpRouter := zigbee.NewConbeeToFimpRouter("legohome.local:443","841CC054BE")
+	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI,configs.MqttClientIdPrefix,configs.MqttUsername,configs.MqttPassword,true,1,1)
+	err = mqtt.Start()
+	if err != nil {
+		log.Error("Failed to connect ot broker. Error:",err.Error())
+	}else {
+		log.Info("Connected")
+	}
+
+
+	conFimpRouter := zigbee.NewConbeeToFimpRouter("legohome.local:443","841CC054BE",mqtt,configs.InstanceAddress)
 	conFimpRouter.Start()
 
 	select {
