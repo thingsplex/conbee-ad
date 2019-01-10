@@ -64,10 +64,15 @@ func main() {
 	}else {
 		log.Info("Connected")
 	}
+	mqtt.Subscribe("pt:j1/+/rt:dev/rn:zigbee/ad:1/#")
+	mqtt.Subscribe("pt:j1/+/rt:ad/rn:zigbee/ad:1")
 
 
 	conFimpRouter := zigbee.NewConbeeToFimpRouter("legohome.local:443","841CC054BE",mqtt,configs.InstanceAddress)
 	conFimpRouter.Start()
+
+	fimpRouter := zigbee.NewFimpToConbeeRouter("",mqtt)
+	fimpRouter.Start()
 
 	select {
 
