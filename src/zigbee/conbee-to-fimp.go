@@ -1,7 +1,7 @@
 package zigbee
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/futurehomeno/fimpgo"
 	"github.com/gorilla/websocket"
@@ -19,6 +19,7 @@ type ConbeeToFimpRouter struct {
 	conbeeClient *conbee.Client
 	conbeeEventStream chan conbee.ConbeeEvent
 	netService *NetworkService
+	batteryLevels map[string]int
 }
 
 func NewConbeeToFimpRouter(transport *fimpgo.MqttTransport,conbeeClient *conbee.Client,netService *NetworkService,instanceId string) *ConbeeToFimpRouter {
@@ -27,6 +28,7 @@ func NewConbeeToFimpRouter(transport *fimpgo.MqttTransport,conbeeClient *conbee.
 }
 
 func (cr *ConbeeToFimpRouter) Start() {
+	cr.batteryLevels = map[string]int{}
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -60,11 +62,34 @@ func (cr *ConbeeToFimpRouter) Start() {
 
 }
 
+//func (cr *ConbeeToFimpRouter) isBatteryLevelChanged(event *conbee.ConbeeEvent) bool {
+//	 oldValue , ok := cr.batteryLevels[event.Id]
+//	 if ok {
+//		 if oldValue == event.Sensor.Config.Battery {
+//		 	return false
+//		 }else {
+//			 cr.batteryLevels[event.Id] = event.Sensor.Config.Battery
+//		 	return true
+//		 }
+//	 }else {
+//		cr.batteryLevels[event.Id] = event.Sensor.Config.Battery
+//	 	return true
+//	 }
+//}
+
 func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 	var msg * fimpgo.FimpMessage
 	var adr *fimpgo.Address
+	var serviceAddress string
+	if evt.Sensor.Config.Battery !=nil {
+		msg = fimpgo.NewIntMessage("evt.lvl.report", "battery",int64(*evt.Sensor.Config.Battery), nil, nil, nil)
+		adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "battery", ServiceAddress: evt.Id}
+		cr.mqt.Publish(adr,msg)
+	}
+
 	for k := range evt.State {
 		if evt.ResourceType == "sensors" {
+			serviceAddress = "s"+evt.Id+"_0"
 			log.Debug("state ",k)
 			switch k{
 			case "open":
@@ -74,7 +99,7 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				msg = fimpgo.NewBoolMessage("evt.open.report", "sensor_contact", val, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_contact", ServiceAddress: evt.Id}
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_contact", ServiceAddress: serviceAddress}
 
 			case "buttonevent":
 				val,ok := evt.State[k].(float64)
@@ -84,7 +109,7 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 				}
 				valS := strconv.FormatFloat(val,'f',-1,32)
 				msg = fimpgo.NewStringMessage("evt.scene.report", "scene_ctrl", valS, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "scene_ctrl", ServiceAddress: evt.Id}
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "scene_ctrl", ServiceAddress: serviceAddress}
 
 			case "presence":
 				val,ok := evt.State[k].(bool)
@@ -93,7 +118,7 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				msg = fimpgo.NewBoolMessage("evt.presence.report", "sensor_presence", val, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_presence", ServiceAddress: evt.Id}
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_presence", ServiceAddress: serviceAddress}
 
 			case "temperature":
 				val,ok := evt.State[k].(float64)
@@ -102,8 +127,8 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				val = val/100
-				msg = fimpgo.NewFloatMessage("evt.sensor.report", "sensor_temp", val, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_temp", ServiceAddress: evt.Id}
+				msg = fimpgo.NewFloatMessage("evt.sensor.report", "sensor_temp", val, map[string]string{"unit":"C"}, nil, nil)
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_temp", ServiceAddress: serviceAddress}
 				// sensor temp
 			case "flag":
 				// ?
@@ -116,10 +141,11 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				val = val/100
-				msg = fimpgo.NewFloatMessage("evt.sensor.report", "humid_sensor", val, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "humid_sensor", ServiceAddress: evt.Id}
+				msg = fimpgo.NewFloatMessage("evt.sensor.report", "sensor_humid", val,  map[string]string{"unit":"%"}, nil, nil)
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_humid", ServiceAddress: serviceAddress}
 			}
 		}else if evt.ResourceType == "lights" {
+			serviceAddress = "l"+evt.Id+"_0"
 			switch k {
 			case "bri":
 				val,ok := evt.State[k].(float64)
@@ -128,7 +154,7 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				msg = fimpgo.NewIntMessage("evt.lvl.report", "out_lvl_switch", int64(val), nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "out_lvl_switch", ServiceAddress: evt.Id}
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "out_lvl_switch", ServiceAddress: serviceAddress}
 
 				// level
 			case "on":
@@ -138,7 +164,7 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 					continue
 				}
 				msg = fimpgo.NewBoolMessage("evt.binary.report", "out_lvl_switch", val, nil, nil, nil)
-				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "out_lvl_switch", ServiceAddress: evt.Id}
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "zigbee", ResourceAddress: cr.instanceId, ServiceName: "out_lvl_switch", ServiceAddress: serviceAddress}
 
 				//
 			case "hue":

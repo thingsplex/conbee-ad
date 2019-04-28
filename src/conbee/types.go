@@ -38,8 +38,8 @@ type Light struct {
 type Sensor struct {
 	Config struct {
 		On        bool `json:"on"`
-		Reachable bool `json:"reachable"`
-		Battery   int  `json:"battery"`
+		Reachable *bool `json:"reachable"`
+		Battery   *int  `json:"battery"`
 	} `json:"config"`
 	Ep               int    `json:"ep"`
 	Etag             string `json:"etag"`

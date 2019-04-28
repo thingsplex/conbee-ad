@@ -1,4 +1,4 @@
-version="0.10.6"
+version="0.1.1"
 version_file=VERSION
 working_dir=$(shell pwd)
 arch="armhf"
@@ -10,10 +10,10 @@ build-go:
 	go build -o conbee-ad src/service.go
 
 build-go-arm:
-	GOOS=linux GOARCH=arm GOARM=6 go build -o conbee-ad src/service.go
+	cd ./src;GOOS=linux GOARCH=arm GOARM=6 go build -ldflags="-s -w" -o conbee-ad service.go;cd ../
 
 build-go-amd:
-	GOOS=linux GOARCH=amd64 go build -o conbee-ad src/service.go
+	cd ./src;GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o conbee-ad service.go;cd ../
 
 
 configure-arm:
@@ -28,20 +28,11 @@ package-tar:
 
 package-deb-doc-1:
 	@echo "Packaging application as debian package"
-	chmod a+x package/debian1/DEBIAN/*
-	cp conbee-ad package/debian1/opt/thingsplex/conbee-ad
-	cp VERSION package/debian1/opt/thingsplex/conbee-ad
+	chmod a+x package/debian/DEBIAN/*
+	cp ./src/conbee-ad package/debian/opt/thingsplex/conbee-ad
+	cp VERSION package/debian/opt/thingsplex/conbee-ad
 	docker run --rm -v ${working_dir}:/build -w /build --name debuild debian dpkg-deb --build package/debian
 	@echo "Done"
-
-package-deb-doc-2:
-	@echo "Packaging application as debian package"
-	chmod a+x package/debian2/DEBIAN/*
-	cp conbee-ad package/debian2/usr/bin/conbee-ad
-	cp VERSION package/debian2/opt/thingsplex/conbee-ad
-	docker run --rm -v ${working_dir}:/build -w /build --name debuild debian dpkg-deb --build package/debian
-	@echo "Done"
-
 
 tar-arm: build-js build-go-arm package-deb-doc-1
 	@echo "The application was packaged into tar archive "

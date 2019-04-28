@@ -8,7 +8,7 @@ import (
 	"github.com/alivinco/conbee-ad/model"
 	"github.com/alivinco/conbee-ad/zigbee"
 	"github.com/futurehomeno/fimpgo"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io/ioutil"
 )

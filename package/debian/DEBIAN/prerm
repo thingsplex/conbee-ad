@@ -1,0 +1,3 @@
+#!/bin/bash
+systemctl stop conbee-ad.service || true
+systemctl disable conbee-ad.service || true

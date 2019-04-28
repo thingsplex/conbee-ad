@@ -1,7 +1,7 @@
 package zigbee
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/futurehomeno/fimpgo"
 	"strings"
@@ -37,9 +37,10 @@ func (fc *FimpToConbeeRouter) Start() {
 
 func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	log.Debug("New fimp msg")
+	addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
 	switch newMsg.Payload.Service {
 	case "out_lvl_switch" :
-		addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
+		addr = strings.Replace(addr,"l","",1)
 		switch newMsg.Payload.Type {
 		case "cmd.binary.set":
 			val,_ := newMsg.Payload.GetBoolValue()
@@ -53,6 +54,10 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			//log.Debug("Status code = ",respH.StatusCode)
 		case "cmd.lvl.set":
 			val,_ := newMsg.Payload.GetIntValue()
+			// 255 - 100%
+			// A   - x%
+			//x = A * 100 / 255
+
 			req := conbee.ConnbeeLightRequest{Bri:int(val),On:true}
 			var resp interface{}
 			log.Debug("Request ",req)
@@ -68,7 +73,7 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 		req := conbee.ConnbeeLightRequest{On:val}
 		var resp interface{}
 		log.Debug("Request ",req)
-		addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
+		addr = strings.Replace(addr,"l","",1)
 		respH , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
 		if err != nil {
 			log.Error("Response error ",err)
@@ -79,15 +84,37 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	case "zigbee":
 		switch newMsg.Payload.Type {
 		case "cmd.network.get_all_nodes":
-			// response evt.network.all_nodes_report
 			fc.netService.SendListOfDevices()
 		case "cmd.thing.get_inclusion_report":
 			nodeId , _ := newMsg.Payload.GetStringValue()
-			fc.netService.SendInclusionReport("",nodeId)
+			var deviceType string
+			if strings.Contains(nodeId,"s") {
+				deviceType = "sensors"
+				nodeId = strings.Replace(nodeId,"s","",1)
+			}else {
+				deviceType = "lights"
+				nodeId = strings.Replace(nodeId,"l","",1)
+			}
+
+			fc.netService.SendInclusionReport(deviceType,nodeId)
 		case "cmd.thing.inclusion":
-			// open/close network
+			flag , _ := newMsg.Payload.GetBoolValue()
+			fc.netService.OpenNetwork(flag)
 		case "cmd.thing.delete":
 			// remove device from network
+			val,err := newMsg.Payload.GetStrMapValue()
+			if err != nil {
+				log.Error("Wrong msg format")
+				return
+			}
+			deviceId , ok := val["address"]
+			if ok {
+				fc.netService.DeleteThing(deviceId)
+			}else {
+				log.Error("Incorrect address")
+
+			}
+
 		}
 		//
 

@@ -1,15 +1,13 @@
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/Sirupsen/logrus v1.0.6 h1:HCAGQRk48dRVPA5Y+Yh0qdCSTzPOyU1tBJ7Q9YzotII=
-github.com/Sirupsen/logrus v1.0.6/go.mod h1:rmk17hk6i8ZSAJkSDa7nOxamrG+SP4P0mm+DAvExv4U=
 github.com/buger/jsonparser v0.0.0-20170325175528-016ea00d7ed5 h1:6Tu4eB3VftkCMQ8sMbD2UEB5uY0iQlGV7su6kRuXGyA=
 github.com/buger/jsonparser v0.0.0-20170325175528-016ea00d7ed5/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d h1:Gg7yZurz19B+5VaCX/QwBO3Z3I/Rw/1DN76EDQhqw0M=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d/go.mod h1:H9keYFcgq3Qr5OUJm/JZI/i6U7joQ8SYLhZwfeOo6Ts=
-github.com/futurehomeno/fimpgo v1.1.2 h1:tjW5NXpqPyjaU7J3x6JmNy283tJQiWHGv5UjNZntwW4=
-github.com/futurehomeno/fimpgo v1.1.2/go.mod h1:/bgOdGSuTajThEHFn8udbt6zeOlIeGi2T+I3kXHS9L8=
+github.com/futurehomeno/fimpgo v1.3.2 h1:DYpoZztxnyFJjkJ/4VDk7YL7C6X7UKkvc4TtWvDEAEs=
+github.com/futurehomeno/fimpgo v1.3.2/go.mod h1:3k5GUA6pVwj+T26pJHzmniBVFkN+9+VskSrsZEHiLcs=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=

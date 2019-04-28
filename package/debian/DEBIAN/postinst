@@ -55,8 +55,8 @@ case "$1" in
 		# Start conbee-ad
 		if [ -f /opt/thingsplex/conbee-ad/conbee-ad ]
 		then
-		    systemctl enable conbee-ad.service
-			systemctl start conbee-ad.service
+		    systemctl enable conbee-ad.service || true
+			systemctl start conbee-ad.service || true
 		fi
 	;;
 

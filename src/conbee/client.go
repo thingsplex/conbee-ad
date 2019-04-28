@@ -3,7 +3,7 @@ package conbee
 import (
 	"bytes"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
