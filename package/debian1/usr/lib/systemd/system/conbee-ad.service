@@ -1,5 +1,5 @@
 [Unit]
-Description=IoT Flow logic engine
+Description=Conbee zigbee adapter
 
 [Service]
 Type=simple

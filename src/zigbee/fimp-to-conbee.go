@@ -1,30 +1,25 @@
 package zigbee
 
 import (
-	"bytes"
-	"encoding/json"
-	"github.com/alivinco/conbee-ad/model"
-	"github.com/futurehomeno/fimpgo"
 	log "github.com/Sirupsen/logrus"
-	"io"
-	"net/http"
+	"github.com/alivinco/conbee-ad/conbee"
+	"github.com/futurehomeno/fimpgo"
+	"strings"
 )
 
 type FimpToConbeeRouter struct {
-	conbeeBaseURL   string
-	apiKey       string
 	inboundMsgCh fimpgo.MessageCh
 	mqt          *fimpgo.MqttTransport
 	instanceId   string
-	httpClient *http.Client
+	conbeeClient *conbee.Client
+	netService *NetworkService
 }
 
-func NewFimpToConbeeRouter(conbeeHost string,mqt *fimpgo.MqttTransport) *FimpToConbeeRouter {
-	fc := FimpToConbeeRouter{conbeeBaseURL: conbeeHost, inboundMsgCh: make(fimpgo.MessageCh,5),mqt:mqt}
+func NewFimpToConbeeRouter(mqt *fimpgo.MqttTransport, conbeeClient *conbee.Client,netService *NetworkService) *FimpToConbeeRouter {
+	fc := FimpToConbeeRouter{inboundMsgCh: make(fimpgo.MessageCh,5),mqt:mqt,netService:netService}
 	fc.mqt.RegisterChannel("ch1",fc.inboundMsgCh)
-	fc.httpClient = &http.Client{}
-	fc.conbeeBaseURL = "http://legohome.local/api/841CC054BE"
-	return &fc
+	fc.conbeeClient = conbeeClient
+		return &fc
 }
 
 func (fc *FimpToConbeeRouter) Start() {
@@ -44,14 +39,37 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	log.Debug("New fimp msg")
 	switch newMsg.Payload.Service {
 	case "out_lvl_switch" :
+		addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
+		switch newMsg.Payload.Type {
+		case "cmd.binary.set":
+			val,_ := newMsg.Payload.GetBoolValue()
+			req := conbee.ConnbeeLightRequest{On:val}
+			var resp interface{}
+			log.Debug("Request ",req)
+			_ , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
+			if err != nil {
+				log.Error("Response error ",err)
+			}
+			//log.Debug("Status code = ",respH.StatusCode)
+		case "cmd.lvl.set":
+			val,_ := newMsg.Payload.GetIntValue()
+			req := conbee.ConnbeeLightRequest{Bri:int(val),On:true}
+			var resp interface{}
+			log.Debug("Request ",req)
+			_ , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
+			if err != nil {
+				log.Error("Response error ",err)
+			}
+		}
 
 	case "out_bin_switch":
 		log.Debug("Sending switch")
 		val,_ := newMsg.Payload.GetBoolValue()
-		req := model.ConnbeeLightRequest{On:val}
+		req := conbee.ConnbeeLightRequest{On:val}
 		var resp interface{}
 		log.Debug("Request ",req)
-		respH , err :=  fc.SendConbeeRequest("PUT","lights/2/state",req,resp)
+		addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
+		respH , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
 		if err != nil {
 			log.Error("Response error ",err)
 		}
@@ -62,9 +80,13 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 		switch newMsg.Payload.Type {
 		case "cmd.network.get_all_nodes":
 			// response evt.network.all_nodes_report
+			fc.netService.SendListOfDevices()
+		case "cmd.thing.get_inclusion_report":
+			nodeId , _ := newMsg.Payload.GetStringValue()
+			fc.netService.SendInclusionReport("",nodeId)
 		case "cmd.thing.inclusion":
 			// open/close network
-		case "cmd.thing.remove":
+		case "cmd.thing.delete":
 			// remove device from network
 		}
 		//
@@ -73,33 +95,4 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 }
 
-func (fc *FimpToConbeeRouter) SendConbeeRequest(method, path string, request interface{},response interface{}) (*http.Response, error) {
 
-	var buf io.ReadWriter
-	if request != nil {
-		buf = new(bytes.Buffer)
-		err := json.NewEncoder(buf).Encode(request)
-		if err != nil {
-			return nil, err
-		}
-	}
-	log.Debug("Sending to ",fc.conbeeBaseURL+"/"+path)
-	log.Debug("Request ",request)
-	req, err := http.NewRequest(method, fc.conbeeBaseURL+"/"+path, buf)
-	if err != nil {
-		return nil, err
-	}
-	if request != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Accept", "application/json")
-	//req.Header.Set("User-Agent", c.UserAgent)
-	resp, err := fc.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(response)
-	return resp, err
-
-}

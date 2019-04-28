@@ -42,6 +42,8 @@ add_user_and_group()
 set_ownership()
 {
 	chown -R conbee-ad:thingsplex "/opt/thingsplex/conbee-ad"
+	chmod 764 /var/log/thingsplex/conbee-ad || true
+	chown conbee-ad:thingsplex /var/log/thingsplex/conbee-ad || true
 }
 
 
@@ -50,14 +52,7 @@ case "$1" in
 	    echo "Configuring.."
 		add_user_and_group
 		set_ownership
-		migrate_fimpflows
-        if [ ! -d /var/log/thingsplex ]
-        then
-            echo "Setting up logging dir"
-            mkdir -m 774 /var/log/thingsplex
-            chown conbee-ad:thingsplex /var/log/thingsplex
-        fi
-		# Start thingsplex
+		# Start conbee-ad
 		if [ -f /opt/thingsplex/conbee-ad/conbee-ad ]
 		then
 		    systemctl enable conbee-ad.service

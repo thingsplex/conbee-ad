@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/alivinco/conbee-ad/model"
 	"github.com/alivinco/conbee-ad/zigbee"
 	"github.com/futurehomeno/fimpgo"
@@ -67,11 +68,16 @@ func main() {
 	mqtt.Subscribe("pt:j1/+/rt:dev/rn:zigbee/ad:1/#")
 	mqtt.Subscribe("pt:j1/+/rt:ad/rn:zigbee/ad:1")
 
+	//"841CC054BE"
+	// "legohome.local:443"
 
-	conFimpRouter := zigbee.NewConbeeToFimpRouter("legohome.local:443","841CC054BE",mqtt,configs.InstanceAddress)
+	conbeeClient := conbee.NewClient(configs.ConbeeUrl)
+	conbeeClient.SetApiKey("841CC054BE")
+
+	netService := zigbee.NewNetworkService(mqtt,conbeeClient)
+	conFimpRouter := zigbee.NewConbeeToFimpRouter(mqtt, conbeeClient,netService,configs.InstanceAddress)
 	conFimpRouter.Start()
-
-	fimpRouter := zigbee.NewFimpToConbeeRouter("",mqtt)
+	fimpRouter := zigbee.NewFimpToConbeeRouter(mqtt,conbeeClient,netService)
 	fimpRouter.Start()
 
 	select {

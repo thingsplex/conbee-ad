@@ -2,20 +2,11 @@ package zigbee
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/futurehomeno/fimpgo"
 	"github.com/gorilla/websocket"
-	"net/url"
 	"strconv"
-	"time"
 )
-
-type ConbeeEvent struct {
-	MsgType      string                 `json:"t"`
-	EventType    string                 `json:"e"`
-	ResourceType string                 `json:"r"`
-	Id           string                 `json:"id"`
-	State        map[string]interface{} `json:"state"`
-}
 
 type ConbeeToFimpRouter struct {
 	host         string
@@ -23,40 +14,19 @@ type ConbeeToFimpRouter struct {
 	inboundMsgCh chan []byte
 	client       *websocket.Conn
 	isRunning    bool
-	connectionRetryCounter int
-	maxConnRetry           int
 	mqt *fimpgo.MqttTransport
 	instanceId string
+	conbeeClient *conbee.Client
+	conbeeEventStream chan conbee.ConbeeEvent
+	netService *NetworkService
 }
 
-func NewConbeeToFimpRouter(host string,apiKey string,transport *fimpgo.MqttTransport,instanceId string) *ConbeeToFimpRouter {
+func NewConbeeToFimpRouter(transport *fimpgo.MqttTransport,conbeeClient *conbee.Client,netService *NetworkService,instanceId string) *ConbeeToFimpRouter {
 	
-	return &ConbeeToFimpRouter{host: host,apiKey:apiKey,mqt:transport,instanceId:instanceId}
+	return &ConbeeToFimpRouter{conbeeClient:conbeeClient,mqt:transport,instanceId:instanceId,netService:netService}
 }
 
-
-
-func (cr *ConbeeToFimpRouter) connect() error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error("<VincClient> Process CRASHED with error : ", r)
-		}
-	}()
-	u := url.URL{Scheme: "ws", Host: cr.host, Path: ""}
-	log.Infof("<conb-to-fimp> Connecting to %s", u.String())
-	var err error
-	cr.client, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Error("<conb-to-fimp> Dial error", err)
-		cr.isRunning = false
-		return err
-	}
-	log.Infof("<conb-to-fimp> Connected")
-	return err
-}
-
-func (cr *ConbeeToFimpRouter) Start() error {
-	err := cr.connect()
+func (cr *ConbeeToFimpRouter) Start() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -64,47 +34,33 @@ func (cr *ConbeeToFimpRouter) Start() error {
 				cr.isRunning = false
 			}
 		}()
-		defer cr.client.Close()
+		var err error
+		cr.conbeeEventStream ,err = cr.conbeeClient.GetMsgStream()
+		if err != nil {
+			log.Error("Cant get conbee event stream . Err :",err)
+			return
+		}
 		for {
-			evt := ConbeeEvent{}
-			err := cr.client.ReadJSON(&evt)
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) {
-					log.Error("<conb-to-fimp> CloseError : %v", err)
-					if cr.connectionRetryCounter < cr.maxConnRetry {
-						log.Info("<conb-to-fimp> Reconnecting after 6 seconds...")
-						cr.connectionRetryCounter++
-						time.Sleep(time.Second * 6)
-						cr.connect()
-						continue
-					} else {
-						cr.connectionRetryCounter = 0
-						break
-					}
-				} else {
-					//log.Errorf(" Other error (cmd:%s,comp:%s) : %v",vincMsg.Msg.Data.Cmd,vincMsg.Msg.Data.Component, err)
-					continue
-				}
-			}
-			log.Debug("<conb-to-fimp> New event ", evt)
-			switch evt.EventType {
+			log.Debug("<conb-to-fimp> Waiting for new event")
+			newEvent := <- cr.conbeeEventStream
+			switch newEvent.EventType {
 			case "added":
 				log.Info("<conb-to-fimp> New thing added")
+				cr.netService.SendInclusionReport(newEvent.ResourceType,newEvent.Id)
+			case "deleted":
+				log.Info("<conb-to-fimp> New thing added")
+				cr.netService.DeleteThing(newEvent.Id)
 			case "changed":
-				cr.mapSensorEvent(&evt)
-
-
+				cr.mapSensorEvent(&newEvent)
+			default:
+				log.Debug("MsgType :",newEvent.MsgType)
 			}
 		}
 	}()
-	return err
-}
-
-func (cr *ConbeeToFimpRouter) SendInclusionReport(addr string) {
 
 }
 
-func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *ConbeeEvent) {
+func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 	var msg * fimpgo.FimpMessage
 	var adr *fimpgo.Address
 	for k := range evt.State {
@@ -205,7 +161,10 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *ConbeeEvent) {
 			}	
 		}else if evt.ResourceType == "groups" {
 			
+		} else {
+			log.Debug("Unknown Resouce type :",evt.ResourceType)
 		}
+
 		if msg != nil {
 			log.Debug("Sending event")
 			cr.mqt.Publish(adr,msg)

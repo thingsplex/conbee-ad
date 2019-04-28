@@ -7,6 +7,7 @@ type Configs struct {
 	MqttUsername          string `json:"mqtt_server_username"`
 	MqttPassword          string `json:"mqtt_server_password"`
 	MqttClientIdPrefix    string `json:"mqtt_client_id_prefix"`
+	ConbeeUrl             string `json:"conbee_url"`
 	LogFile               string `json:"log_file"`
 	LogLevel              string `json:"log_level"`
 	LogFormat             string `json:"log_format"`
