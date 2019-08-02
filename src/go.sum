@@ -6,8 +6,12 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d h1:Gg7yZurz19B+5VaCX/QwBO3Z3I/Rw/1DN76EDQhqw0M=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d/go.mod h1:H9keYFcgq3Qr5OUJm/JZI/i6U7joQ8SYLhZwfeOo6Ts=
+github.com/eclipse/paho.mqtt.golang v1.2.0 h1:1F8mhG9+aO5/xpdtFkW4SxOJB67ukuDC3t2y2qayIX0=
+github.com/eclipse/paho.mqtt.golang v1.2.0/go.mod h1:H9keYFcgq3Qr5OUJm/JZI/i6U7joQ8SYLhZwfeOo6Ts=
 github.com/futurehomeno/fimpgo v1.3.2 h1:DYpoZztxnyFJjkJ/4VDk7YL7C6X7UKkvc4TtWvDEAEs=
 github.com/futurehomeno/fimpgo v1.3.2/go.mod h1:3k5GUA6pVwj+T26pJHzmniBVFkN+9+VskSrsZEHiLcs=
+github.com/futurehomeno/fimpgo v1.4.0 h1:p/sPrJdg5EPW+A1ZHSBBOzeJBUdFWmtfxkYEq5vyk8I=
+github.com/futurehomeno/fimpgo v1.4.0/go.mod h1:HlCU8WBRMpYVmB/3MUh08VIDj+H95b9TQO6wVhUvrXY=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=

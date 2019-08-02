@@ -74,8 +74,8 @@ func (ns *NetworkService) DeleteThing(deviceId string) error {
 		return errors.New("non success status code")
 	}
 	exclReport := map[string]string{"address":deviceId}
-	msg := fimpgo.NewMessage("evt.thing.exclusion_report", "zigbee", fimpgo.VTypeObject, exclReport, nil, nil, nil)
-	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "zigbee", ResourceAddress: "1"}
+	msg := fimpgo.NewMessage("evt.thing.exclusion_report", "conbee", fimpgo.VTypeObject, exclReport, nil, nil, nil)
+	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "conbee", ResourceAddress: "1"}
 	ns.mqt.Publish(&adr, msg)
 
 	return nil
@@ -196,7 +196,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	outLvlSwitchService := fimptype.Service{
 		Name:    "out_lvl_switch",
 		Alias:   "Light control",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:out_lvl_switch/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:out_lvl_switch/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{
@@ -211,7 +211,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	tempSensorService := fimptype.Service{
 		Name:    "sensor_temp",
 		Alias:   "Temperature sensor",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:sensor_temp/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:sensor_temp/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{
@@ -225,7 +225,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	humidSensorService := fimptype.Service{
 		Name:    "sensor_humid",
 		Alias:   "Humidity sensor",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:sensor_humid/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:sensor_humid/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{
@@ -239,7 +239,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	batteryService := fimptype.Service{
 		Name:    "battery",
 		Alias:   "battery",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:battery/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:battery/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{},
@@ -251,7 +251,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	sceneService := fimptype.Service{
 		Name:    "scene_ctrl",
 		Alias:   "Scene",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:scene_ctrl/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:scene_ctrl/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{},
@@ -263,7 +263,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	contactService := fimptype.Service{
 		Name:    "sensor_contact",
 		Alias:   "Door/window contact",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:sensor_contact/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:sensor_contact/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{},
@@ -275,7 +275,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 	presenceService := fimptype.Service{
 		Name:    "sensor_presence",
 		Alias:   "Door/window contact",
-		Address: "/rt:dev/rn:zigbee/ad:1/sv:sensor_presence/ad:",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:sensor_presence/ad:",
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{},
@@ -351,7 +351,7 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		Type:              "",
 		ProductHash:       manufacturer + "_" + productId,
 		Alias:             productId,
-		CommTechnology:    "zigbee",
+		CommTechnology:    "conbee",
 		ProductId:         productId,
 		ProductName:       productId,
 		ManufacturerId:    manufacturer,
@@ -368,8 +368,8 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		Services:          services,
 	}
 
-	msg := fimpgo.NewMessage("evt.thing.inclusion_report", "zigbee", fimpgo.VTypeObject, inclReport, nil, nil, nil)
-	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "zigbee", ResourceAddress: "1"}
+	msg := fimpgo.NewMessage("evt.thing.inclusion_report", "conbee", fimpgo.VTypeObject, inclReport, nil, nil, nil)
+	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "conbee", ResourceAddress: "1"}
 	ns.mqt.Publish(&adr, msg)
 	return nil
 
@@ -400,8 +400,8 @@ func (ns *NetworkService) SendListOfDevices() error {
 		rec := ListReportRecord{Address:"s"+i,Alias:sensors[i].Name+" "+sensors[i].Modelid}
 		report = append(report,rec)
 	}
-	msg := fimpgo.NewMessage("evt.network.all_nodes_report", "zigbee", fimpgo.VTypeObject, report, nil, nil, nil)
-	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "zigbee", ResourceAddress: "1"}
+	msg := fimpgo.NewMessage("evt.network.all_nodes_report", "conbee", fimpgo.VTypeObject, report, nil, nil, nil)
+	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "conbee", ResourceAddress: "1"}
 	ns.mqt.Publish(&adr, msg)
 
 	return nil

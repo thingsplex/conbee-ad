@@ -8,6 +8,8 @@ import (
 	"github.com/alivinco/conbee-ad/model"
 	"github.com/alivinco/conbee-ad/zigbee"
 	"github.com/futurehomeno/fimpgo"
+	"github.com/futurehomeno/fimpgo/discovery"
+	"github.com/futurehomeno/fimpgo/fimptype"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io/ioutil"
@@ -38,6 +40,74 @@ func SetupLog(logfile string, level string, logFormat string) {
 
 }
 
+func getDiscoveryResource() discovery.Resource {
+	adInterfaces := []fimptype.Interface{{
+		Type:      "in",
+		MsgType:   "cmd.network.get_all_nodes",
+		ValueType: "null",
+		Version:   "1",
+	},{
+		Type:      "in",
+		MsgType:   "cmd.thing.get_inclusion_report",
+		ValueType: "string",
+		Version:   "1",
+	}, {
+		Type:      "in",
+		MsgType:   "cmd.thing.inclusion",
+		ValueType: "string",
+		Version:   "1",
+	}, {
+		Type:      "in",
+		MsgType:   "cmd.thing.delete",
+		ValueType: "string",
+		Version:   "1",
+	}, {
+		Type:      "out",
+		MsgType:   "evt.thing.inclusion_report",
+		ValueType: "object",
+		Version:   "1",
+	}, {
+		Type:      "out",
+		MsgType:   "evt.thing.exclusion_report",
+		ValueType: "object",
+		Version:   "1",
+	}, {
+		Type:      "out",
+		MsgType:   "evt.network.all_nodes_report",
+		ValueType: "object",
+		Version:   "1",
+	}}
+
+
+	adService := fimptype.Service{
+		Name:    "conbee",
+		Alias:   "Network managment",
+		Address: "/rt:ad/rn:conbee/ad:1",
+		Enabled: true,
+		Groups:  []string{"ch_0"},
+		Tags:             nil,
+		PropSetReference: "",
+		Interfaces:       adInterfaces,
+	}
+	return  discovery.Resource{
+		ResourceName:"conbee",
+		ResourceType:discovery.ResourceTypeAd,
+		Author:"aleksandrs.livincovs@gmail.com",
+		IsInstanceConfigurable:false,
+		InstanceId:"1",
+		Version:"1",
+		AdapterInfo:discovery.AdapterInfo{
+			Technology:"conbee",
+			FwVersion:"all",
+			NetworkManagementType:"inclusion_exclusion",
+			Services:[]fimptype.Service{adService},
+		},
+	}
+
+
+}
+
+
 func main() {
 	configs := model.Configs{}
 	var configFile string
@@ -65,11 +135,16 @@ func main() {
 	}else {
 		log.Info("Connected")
 	}
-	mqtt.Subscribe("pt:j1/+/rt:dev/rn:zigbee/ad:1/#")
-	mqtt.Subscribe("pt:j1/+/rt:ad/rn:zigbee/ad:1")
+	mqtt.Subscribe("pt:j1/+/rt:dev/rn:conbee/ad:1/#")
+	mqtt.Subscribe("pt:j1/+/rt:ad/rn:conbee/ad:1")
 
 	//"841CC054BE"
 	// "legohome.local:443"
+
+
+	responder := discovery.NewServiceDiscoveryResponder(mqtt)
+	responder.RegisterResource(getDiscoveryResource())
+	responder.Start()
 
 	conbeeClient := conbee.NewClient(configs.ConbeeUrl)
 	conbeeClient.SetApiKey("841CC054BE")

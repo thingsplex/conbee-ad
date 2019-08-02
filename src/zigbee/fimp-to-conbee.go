@@ -81,7 +81,7 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 		log.Debug("Status code = ",respH.StatusCode)
 
 		//
-	case "zigbee":
+	case "conbee":
 		switch newMsg.Payload.Type {
 		case "cmd.network.get_all_nodes":
 			fc.netService.SendListOfDevices()
