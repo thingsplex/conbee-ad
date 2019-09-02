@@ -104,9 +104,7 @@ func getDiscoveryResource() discovery.Resource {
 		},
 	}
 
-
 }
-
 
 func main() {
 	configs := model.Configs{}

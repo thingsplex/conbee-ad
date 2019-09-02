@@ -3,8 +3,8 @@ package conbee
 import (
 	"bytes"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/url"
@@ -35,7 +35,7 @@ func NewClient(conbeeBaseURL string) *Client {
 	//"http://legohome.local/api/841CC054BE"
 	cb.httpClient = &http.Client{Timeout: 15 * time.Second}
 	cb.msgStream = make(chan ConbeeEvent,10)
-	cb.maxConnRetry = 20
+	cb.maxConnRetry = 100
 	return cb
 }
 
@@ -46,7 +46,6 @@ func (rc *Client) GetMsgStream() (chan ConbeeEvent, error) {
 		} else {
 
 		}
-		rc.isWsConnectionActive = false
 	}()
 	if rc.isWsConnectionActive {
 		return rc.msgStream , nil
@@ -61,16 +60,16 @@ func (rc *Client) GetMsgStream() (chan ConbeeEvent, error) {
 
 func (rc *Client) wsConnect()error {
 	u := url.URL{Scheme: "ws", Host: rc.host+":443", Path: ""}
-	log.Infof("<conb-to-fimp> Connecting to %s", u.String())
+	log.Infof("<conb-client> Connecting to %s", u.String())
 	var err error
 	rc.wsClient, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Error("<conb-to-fimp> Dial error", err)
+		log.Error("<conb-client> Dial error", err)
 		rc.isWsConnectionActive = false
 		return  err
 	}
 	rc.isWsConnectionActive = true
-	log.Infof("<conb-to-fimp> Connected")
+	log.Info("<conb-client> Connected ")
 	return nil
 }
 
@@ -78,21 +77,26 @@ func (rc *Client) startWsEventLoop() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error("<conb-to-fimp> Process CRASHED with error : ", r)
+				log.Error("<conb-client> Process CRASHED with error : ", r)
 			}
 			rc.isWsConnectionActive= false
+			log.Infof("<conb-client> Event loop was is stopped")
 		}()
-		log.Debug("<conb-to-fimp> Starting event loop ")
+		log.Debug("<conb-client> Starting event loop . Client is connected = ",rc.isWsConnectionActive)
+		var err error
 		for {
 			evt := ConbeeEvent{}
-			err := rc.wsClient.ReadJSON(&evt)
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) {
-					log.Error("<conb-to-fimp> CloseError : %v", err)
+			if rc.isWsConnectionActive {
+				err = rc.wsClient.ReadJSON(&evt)
+			}
+			if err != nil || !rc.isWsConnectionActive {
+				if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) || !rc.isWsConnectionActive {
+					rc.isWsConnectionActive = false
+					log.Errorf("<conb-client> CloseError : %v", err)
 					if rc.connectionRetryCounter < rc.maxConnRetry {
-						log.Info("<conb-to-fimp> Reconnecting after 6 seconds...")
+						log.Info("<conb-client> Reconnecting after 10 seconds...")
 						rc.connectionRetryCounter++
-						time.Sleep(time.Second * 10)
+						time.Sleep(time.Second * 5)
 						rc.wsConnect()
 						continue
 					} else {
@@ -100,13 +104,14 @@ func (rc *Client) startWsEventLoop() {
 						break
 					}
 				} else {
-					log.Errorf(" Other error  %v", err)
-					time.Sleep(time.Second * 10)
+					rc.isWsConnectionActive = false
+					log.Errorf("<conb-client> Other error  %v", err)
+					time.Sleep(time.Second * 30)
 					rc.wsConnect()
 					continue
 				}
 			}
-			log.Debug("<conb-to-fimp> New event. sending to ch ", evt)
+			log.Debug("<conb-client> New event. sending to ch ")
 			rc.msgStream <- evt
 		}
 	}()
