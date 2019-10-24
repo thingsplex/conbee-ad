@@ -2,7 +2,9 @@ package conbee
 
 import (
 	"bytes"
+	b64 "encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -35,7 +37,7 @@ func NewClient(conbeeBaseURL string) *Client {
 	//"http://legohome.local/api/841CC054BE"
 	cb.httpClient = &http.Client{Timeout: 15 * time.Second}
 	cb.msgStream = make(chan ConbeeEvent,10)
-	cb.maxConnRetry = 100
+	cb.maxConnRetry = 2000
 	return cb
 }
 
@@ -117,8 +119,39 @@ func (rc *Client) startWsEventLoop() {
 	}()
 }
 
-func Login(username, password string) {
+func (rc *Client) Login(username, password string) error {
+	httpClient := &http.Client{}
+	credentials := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s",username,password)))
+	payloadM := map[string]string{"devicetype":"conbee-ad"}
+	payloadB , _ := json.Marshal(payloadM)
+	path := "http://"+rc.host + "/api"
+	log.Debug("Sending to ", path)
+	req, err := http.NewRequest("POST", path, bytes.NewBuffer(payloadB))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Basic "+credentials)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
 
+	defer resp.Body.Close()
+
+	var response []map[string]map[string]string
+
+	if resp != nil {
+		err = json.NewDecoder(resp.Body).Decode(response)
+	}
+	if len(response)>0 {
+		uo , ok := response[0]["success"]
+		if ok {
+			rc.apiKey,_ = uo["username"]
+		}
+	}
+	return nil
 }
 
 func (rc *Client) SendConbeeRequest(method, path string, request interface{}, response interface{}) (*http.Response, error) {

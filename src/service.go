@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/alivinco/conbee-ad/conbee"
@@ -12,7 +11,6 @@ import (
 	"github.com/futurehomeno/fimpgo/fimptype"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"io/ioutil"
 )
 
 func SetupLog(logfile string, level string, logFormat string) {
@@ -107,7 +105,7 @@ func getDiscoveryResource() discovery.Resource {
 }
 
 func main() {
-	configs := model.Configs{}
+
 	var configFile string
 	flag.StringVar(&configFile, "c", "", "Config file")
 	flag.Parse()
@@ -116,15 +114,15 @@ func main() {
 	} else {
 		fmt.Println("Loading configs from file ", configFile)
 	}
-	configFileBody, err := ioutil.ReadFile(configFile)
-	err = json.Unmarshal(configFileBody, &configs)
+	configs := model.NewConfigs(configFile)
+	err := configs.LoadFromFile()
 	if err != nil {
 		fmt.Print(err)
 		panic("Can't load config file.")
 	}
 
 	SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
-	log.Info("--------------Starting ThingsPlexServiceTemplate----------------")
+	log.Info("-------------- Starting conbee-ad ----------------")
 
 	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI,configs.MqttClientIdPrefix,configs.MqttUsername,configs.MqttPassword,true,1,1)
 	err = mqtt.Start()
