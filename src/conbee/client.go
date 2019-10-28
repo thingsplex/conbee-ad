@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -28,8 +29,9 @@ func (rc *Client) ApiKey() string {
 	return rc.apiKey
 }
 
-func (rc *Client) SetApiKey(apiKey string) {
+func (rc *Client) SetApiKeyAndHost(apiKey string, host string) {
 	rc.apiKey = apiKey
+	rc.host = host
 }
 
 func NewClient(conbeeBaseURL string) *Client {
@@ -120,35 +122,51 @@ func (rc *Client) startWsEventLoop() {
 }
 
 func (rc *Client) Login(username, password string) error {
+	if username == "" {
+		username = "delight"
+	}
 	httpClient := &http.Client{}
 	credentials := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s",username,password)))
-	payloadM := map[string]string{"devicetype":"conbee-ad"}
+	payloadM := map[string]string{"devicetype":"conbee-ad","login":username}
 	payloadB , _ := json.Marshal(payloadM)
 	path := "http://"+rc.host + "/api"
 	log.Debug("Sending to ", path)
+	log.Debug("Credentials ", credentials)
 	req, err := http.NewRequest("POST", path, bytes.NewBuffer(payloadB))
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Authorization", "Basic "+credentials)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Basic "+credentials)
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
+		//b,_ := ioutil.ReadAll(resp.Body)
+		//log.Debug("Response code :",resp.Status)
+		log.Error("Error :",err.Error())
 		return err
 	}
 
-	defer resp.Body.Close()
+	bBody,err := ioutil.ReadAll(resp.Body)
+	log.Debug("Status :",resp.Status)
+	log.Debug("Response :",string(bBody))
 
 	var response []map[string]map[string]string
 
 	if resp != nil {
-		err = json.NewDecoder(resp.Body).Decode(response)
+		err = json.Unmarshal(bBody,&response)
+		if err != nil {
+			log.Error("Login response is in wrong format",err)
+			return err
+		}
 	}
+
 	if len(response)>0 {
 		uo , ok := response[0]["success"]
 		if ok {
 			rc.apiKey,_ = uo["username"]
+			log.Debug("Api key:",rc.apiKey)
 		}
 	}
 	return nil

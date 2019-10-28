@@ -44,7 +44,7 @@ func getDiscoveryResource() discovery.Resource {
 		MsgType:   "cmd.network.get_all_nodes",
 		ValueType: "null",
 		Version:   "1",
-	},{
+	}, {
 		Type:      "in",
 		MsgType:   "cmd.thing.get_inclusion_report",
 		ValueType: "string",
@@ -58,6 +58,16 @@ func getDiscoveryResource() discovery.Resource {
 		Type:      "in",
 		MsgType:   "cmd.thing.delete",
 		ValueType: "string",
+		Version:   "1",
+	}, {
+		Type:      "in",
+		MsgType:   "cmd.auth.login",
+		ValueType: "str_map", // username/password
+		Version:   "1",
+	}, {
+		Type:      "out",
+		MsgType:   "evt.auth.login_report",
+		ValueType: "string", // success , failed
 		Version:   "1",
 	}, {
 		Type:      "out",
@@ -74,31 +84,35 @@ func getDiscoveryResource() discovery.Resource {
 		MsgType:   "evt.network.all_nodes_report",
 		ValueType: "object",
 		Version:   "1",
+	}, {
+		Type:      "in",
+		MsgType:   "cmd.log.set_level",
+		ValueType: "string",
+		Version:   "1",
 	}}
 
-
 	adService := fimptype.Service{
-		Name:    "conbee",
-		Alias:   "Network managment",
-		Address: "/rt:ad/rn:conbee/ad:1",
-		Enabled: true,
-		Groups:  []string{"ch_0"},
+		Name:             "conbee",
+		Alias:            "Network managment",
+		Address:          "/rt:ad/rn:conbee/ad:1",
+		Enabled:          true,
+		Groups:           []string{"ch_0"},
 		Tags:             nil,
 		PropSetReference: "",
 		Interfaces:       adInterfaces,
 	}
-	return  discovery.Resource{
-		ResourceName:"conbee",
-		ResourceType:discovery.ResourceTypeAd,
-		Author:"aleksandrs.livincovs@gmail.com",
-		IsInstanceConfigurable:false,
-		InstanceId:"1",
-		Version:"1",
-		AdapterInfo:discovery.AdapterInfo{
-			Technology:"conbee",
-			FwVersion:"all",
-			NetworkManagementType:"inclusion_exclusion",
-			Services:[]fimptype.Service{adService},
+	return discovery.Resource{
+		ResourceName:           "conbee",
+		ResourceType:           discovery.ResourceTypeAd,
+		Author:                 "aleksandrs.livincovs@gmail.com",
+		IsInstanceConfigurable: false,
+		InstanceId:             "1",
+		Version:                "1",
+		AdapterInfo: discovery.AdapterInfo{
+			Technology:            "conbee",
+			FwVersion:             "all",
+			NetworkManagementType: "inclusion_exclusion",
+			Services:              []fimptype.Service{adService},
 		},
 	}
 
@@ -114,44 +128,52 @@ func main() {
 	} else {
 		fmt.Println("Loading configs from file ", configFile)
 	}
+	appLifecycle := model.NewAppLifecycle()
 	configs := model.NewConfigs(configFile)
 	err := configs.LoadFromFile()
 	if err != nil {
 		fmt.Print(err)
 		panic("Can't load config file.")
 	}
-
 	SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
 	log.Info("-------------- Starting conbee-ad ----------------")
 
-	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI,configs.MqttClientIdPrefix,configs.MqttUsername,configs.MqttPassword,true,1,1)
+	appLifecycle.PublishEvent(model.EventConfiguring, "main", nil)
+	if configs.IsConfigured() {
+		appLifecycle.PublishEvent(model.EventConfigured, "main", nil)
+	}else {
+		log.Info("<main> Application is not configured.Waiting for configurations ")
+	}
+
+
+	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI, configs.MqttClientIdPrefix, configs.MqttUsername, configs.MqttPassword, true, 1, 1)
 	err = mqtt.Start()
 	if err != nil {
-		log.Error("Failed to connect ot broker. Error:",err.Error())
-	}else {
+		log.Error("Failed to connect ot broker. Error:", err.Error())
+	} else {
 		log.Info("Connected")
 	}
-	mqtt.Subscribe("pt:j1/+/rt:dev/rn:conbee/ad:1/#")
-	mqtt.Subscribe("pt:j1/+/rt:ad/rn:conbee/ad:1")
-
-	//"841CC054BE"
-	// "legohome.local:443"
-
 
 	responder := discovery.NewServiceDiscoveryResponder(mqtt)
 	responder.RegisterResource(getDiscoveryResource())
 	responder.Start()
 
+	//"841CC054BE"
+	// "legohome.local:443"
 	conbeeClient := conbee.NewClient(configs.ConbeeUrl)
-	conbeeClient.SetApiKey("841CC054BE")
+	netService := zigbee.NewNetworkService(mqtt, conbeeClient)
+	fimpRouter := zigbee.NewFimpToConbeeRouter(mqtt, conbeeClient, netService ,appLifecycle,configs)
+	conFimpRouter := zigbee.NewConbeeToFimpRouter(mqtt, conbeeClient, netService, configs.InstanceAddress)
 
-	netService := zigbee.NewNetworkService(mqtt,conbeeClient)
-	conFimpRouter := zigbee.NewConbeeToFimpRouter(mqtt, conbeeClient,netService,configs.InstanceAddress)
-	conFimpRouter.Start()
-	fimpRouter := zigbee.NewFimpToConbeeRouter(mqtt,conbeeClient,netService)
 	fimpRouter.Start()
 
-	select {
-
+	for {
+		appLifecycle.WaitForState("main", model.StateRunning)
+		conbeeClient.SetApiKeyAndHost(configs.ConbeeApiKey, configs.ConbeeUrl)
+		if err := conFimpRouter.Start(); err !=nil {
+			appLifecycle.PublishEvent(model.EventConfigError,"main",nil)
+		}else {
+			appLifecycle.WaitForState(model.StateConfiguring,"main")
+		}
 	}
 }

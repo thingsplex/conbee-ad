@@ -58,3 +58,10 @@ func (cf *Configs) InitDefault() {
 	cf.LogLevel = "info"
 	cf.LogFormat = "text"
 }
+
+func (cf *Configs) IsConfigured()bool {
+	if cf.ConbeeUrl == "" || cf.ConbeeApiKey == "" {
+		return false
+	}
+	return true
+}

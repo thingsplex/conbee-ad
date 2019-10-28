@@ -27,8 +27,14 @@ func NewConbeeToFimpRouter(transport *fimpgo.MqttTransport,conbeeClient *conbee.
 	return &ConbeeToFimpRouter{conbeeClient:conbeeClient,mqt:transport,instanceId:instanceId,netService:netService}
 }
 
-func (cr *ConbeeToFimpRouter) Start() {
+func (cr *ConbeeToFimpRouter) Start() error {
 	cr.batteryLevels = map[string]int{}
+	var err error
+	cr.conbeeEventStream ,err = cr.conbeeClient.GetMsgStream()
+	if err != nil {
+		log.Error("Cant get conbee event stream . Err :",err)
+		return err
+	}
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -36,12 +42,6 @@ func (cr *ConbeeToFimpRouter) Start() {
 				cr.isRunning = false
 			}
 		}()
-		var err error
-		cr.conbeeEventStream ,err = cr.conbeeClient.GetMsgStream()
-		if err != nil {
-			log.Error("Cant get conbee event stream . Err :",err)
-			return
-		}
 		for {
 			log.Debug("<conb-to-fimp> Waiting for new event")
 			newEvent := <- cr.conbeeEventStream
@@ -59,7 +59,7 @@ func (cr *ConbeeToFimpRouter) Start() {
 			}
 		}
 	}()
-
+	return err
 }
 
 //func (cr *ConbeeToFimpRouter) isBatteryLevelChanged(event *conbee.ConbeeEvent) bool {

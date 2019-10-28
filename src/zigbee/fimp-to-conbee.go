@@ -1,11 +1,14 @@
 package zigbee
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/alivinco/conbee-ad/conbee"
+	"github.com/alivinco/conbee-ad/model"
 	"github.com/futurehomeno/fimpgo"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
+
+const ServiceName  = "conbee"
 
 type FimpToConbeeRouter struct {
 	inboundMsgCh fimpgo.MessageCh
@@ -13,16 +16,20 @@ type FimpToConbeeRouter struct {
 	instanceId   string
 	conbeeClient *conbee.Client
 	netService *NetworkService
+	appLifecycle *model.Lifecycle
+	configs      *model.Configs
 }
 
-func NewFimpToConbeeRouter(mqt *fimpgo.MqttTransport, conbeeClient *conbee.Client,netService *NetworkService) *FimpToConbeeRouter {
-	fc := FimpToConbeeRouter{inboundMsgCh: make(fimpgo.MessageCh,5),mqt:mqt,netService:netService}
+func NewFimpToConbeeRouter(mqt *fimpgo.MqttTransport, conbeeClient *conbee.Client,netService *NetworkService,appLifecycle *model.Lifecycle,configs *model.Configs) *FimpToConbeeRouter {
+	fc := FimpToConbeeRouter{inboundMsgCh: make(fimpgo.MessageCh,5),mqt:mqt,netService:netService,appLifecycle:appLifecycle,configs:configs}
 	fc.mqt.RegisterChannel("ch1",fc.inboundMsgCh)
 	fc.conbeeClient = conbeeClient
 		return &fc
 }
 
 func (fc *FimpToConbeeRouter) Start() {
+	fc.mqt.Subscribe("pt:j1/+/rt:dev/rn:conbee/ad:1/#")
+	fc.mqt.Subscribe("pt:j1/+/rt:ad/rn:conbee/ad:1")
 	go func(msgChan fimpgo.MessageCh) {
 		for  {
 			select {
@@ -81,8 +88,73 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 		log.Debug("Status code = ",respH.StatusCode)
 
 		//
-	case "conbee":
+	case ServiceName:
+		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: ServiceName, ResourceAddress:"1"}
 		switch newMsg.Payload.Type {
+		case "cmd.auth.login":
+			reqVal, err := newMsg.Payload.GetStrMapValue()
+			status := "ok"
+			if err != nil {
+				log.Error("Incorrect login message ")
+				return
+			}
+			username,_ := reqVal["username"]
+			password,_ := reqVal["password"]
+			if username != ""{
+				err := fc.conbeeClient.Login(username,password)
+				if err == nil {
+					fc.configs.ConbeeApiKey = fc.conbeeClient.ApiKey()
+					fc.appLifecycle.PublishEvent(model.EventConfigured,"fimp-conbee",nil)
+				}
+			}
+			fc.configs.SaveToFile()
+			if err != nil {
+				status = "error"
+			}
+			msg := fimpgo.NewStringMessage("evt.system.login_report",ServiceName,status,nil,nil,newMsg.Payload)
+			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
+				fc.mqt.Publish(adr,msg)
+			}
+		case "cmd.system.get_connect_params":
+			val := map[string]string{"host":fc.configs.ConbeeUrl,"username":"","password":""}
+			msg := fimpgo.NewStrMapMessage("evt.system.connect_params_report",ServiceName,val,nil,nil,newMsg.Payload)
+			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
+				fc.mqt.Publish(adr,msg)
+			}
+		case "cmd.config.set":
+			fallthrough
+		case "cmd.system.connect":
+			reqVal, err := newMsg.Payload.GetStrMapValue()
+			var errStr string
+			status := "ok"
+			if err != nil {
+				log.Error("Incorrect login message ")
+				 errStr = err.Error()
+			}
+			host,_ := reqVal["host"]
+			username,_ := reqVal["username"]
+			password,_ := reqVal["password"]
+			fc.configs.ConbeeUrl = host
+
+			//if username != ""{
+			err = fc.conbeeClient.Login(username,password)
+			if err == nil {
+				fc.configs.ConbeeApiKey = fc.conbeeClient.ApiKey()
+				fc.appLifecycle.PublishEvent(model.EventConfigured,"fimp-conbee",nil)
+			}else {
+				log.Error("Login error :",err)
+			}
+			//}
+			fc.configs.SaveToFile()
+			if err != nil {
+				status = "error"
+			}
+			val := map[string]string{"status":status,"error":errStr}
+			msg := fimpgo.NewStrMapMessage("evt.system.connect_report",ServiceName,val,nil,nil,newMsg.Payload)
+			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
+				fc.mqt.Publish(adr,msg)
+			}
+
 		case "cmd.network.get_all_nodes":
 			fc.netService.SendListOfDevices()
 		case "cmd.thing.get_inclusion_report":
