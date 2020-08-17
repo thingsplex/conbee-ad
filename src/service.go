@@ -5,146 +5,46 @@ import (
 	"fmt"
 	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/alivinco/conbee-ad/model"
+	"github.com/alivinco/conbee-ad/utils"
 	"github.com/alivinco/conbee-ad/zigbee"
 	"github.com/futurehomeno/fimpgo"
 	"github.com/futurehomeno/fimpgo/discovery"
-	"github.com/futurehomeno/fimpgo/fimptype"
+	"github.com/futurehomeno/fimpgo/edgeapp"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func SetupLog(logfile string, level string, logFormat string) {
-	if logFormat == "json" {
-		log.SetFormatter(&log.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05.999"})
-	} else {
-		log.SetFormatter(&log.TextFormatter{FullTimestamp: true, ForceColors: true, TimestampFormat: "2006-01-02T15:04:05.999"})
-	}
-
-	logLevel, err := log.ParseLevel(level)
-	if err == nil {
-		log.SetLevel(logLevel)
-	} else {
-		log.SetLevel(log.DebugLevel)
-	}
-
-	if logfile != "" {
-		l := lumberjack.Logger{
-			Filename:   logfile,
-			MaxSize:    5, // megabytes
-			MaxBackups: 2,
-		}
-		log.SetOutput(&l)
-	}
-
-}
-
-func getDiscoveryResource() discovery.Resource {
-	adInterfaces := []fimptype.Interface{{
-		Type:      "in",
-		MsgType:   "cmd.network.get_all_nodes",
-		ValueType: "null",
-		Version:   "1",
-	}, {
-		Type:      "in",
-		MsgType:   "cmd.thing.get_inclusion_report",
-		ValueType: "string",
-		Version:   "1",
-	}, {
-		Type:      "in",
-		MsgType:   "cmd.thing.inclusion",
-		ValueType: "string",
-		Version:   "1",
-	}, {
-		Type:      "in",
-		MsgType:   "cmd.thing.delete",
-		ValueType: "string",
-		Version:   "1",
-	}, {
-		Type:      "in",
-		MsgType:   "cmd.auth.login",
-		ValueType: "str_map", // username/password
-		Version:   "1",
-	}, {
-		Type:      "out",
-		MsgType:   "evt.auth.login_report",
-		ValueType: "string", // success , failed
-		Version:   "1",
-	}, {
-		Type:      "out",
-		MsgType:   "evt.thing.inclusion_report",
-		ValueType: "object",
-		Version:   "1",
-	}, {
-		Type:      "out",
-		MsgType:   "evt.thing.exclusion_report",
-		ValueType: "object",
-		Version:   "1",
-	}, {
-		Type:      "out",
-		MsgType:   "evt.network.all_nodes_report",
-		ValueType: "object",
-		Version:   "1",
-	}, {
-		Type:      "in",
-		MsgType:   "cmd.log.set_level",
-		ValueType: "string",
-		Version:   "1",
-	}}
-
-	adService := fimptype.Service{
-		Name:             "conbee",
-		Alias:            "Network managment",
-		Address:          "/rt:ad/rn:conbee/ad:1",
-		Enabled:          true,
-		Groups:           []string{"ch_0"},
-		Tags:             nil,
-		PropSetReference: "",
-		Interfaces:       adInterfaces,
-	}
-	return discovery.Resource{
-		ResourceName:           "conbee",
-		ResourceType:           discovery.ResourceTypeAd,
-		Author:                 "aleksandrs.livincovs@gmail.com",
-		IsInstanceConfigurable: false,
-		InstanceId:             "1",
-		Version:                "1",
-		AdapterInfo: discovery.AdapterInfo{
-			Technology:            "conbee",
-			FwVersion:             "all",
-			NetworkManagementType: "inclusion_exclusion",
-			Services:              []fimptype.Service{adService},
-		},
-	}
-
-}
-
 func main() {
-
-	var configFile string
-	flag.StringVar(&configFile, "c", "", "Config file")
+	var workDir string
+	flag.StringVar(&workDir, "c", "", "Work dir")
 	flag.Parse()
-	if configFile == "" {
-		configFile = "./config.json"
+	if workDir == "" {
+		workDir = "./"
 	} else {
-		fmt.Println("Loading configs from file ", configFile)
+		fmt.Println("Work dir ", workDir)
 	}
 	appLifecycle := model.NewAppLifecycle()
-	configs := model.NewConfigs(configFile)
+	configs := model.NewConfigs(workDir)
 	err := configs.LoadFromFile()
 	if err != nil {
 		fmt.Print(err)
 		panic("Can't load config file.")
 	}
-	SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
+	utils.SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
 	log.Info("-------------- Starting conbee-ad ----------------")
 
-	appLifecycle.PublishEvent(model.EventConfiguring, "main", nil)
+	appLifecycle.SetAppState(edgeapp.AppStateStarting, nil)
+	appLifecycle.SetConnectionState(edgeapp.ConnStateDisconnected)
+	appLifecycle.SetAuthState(edgeapp.AuthStateNotAuthenticated)
+	appLifecycle.SetConfigState(edgeapp.ConfigStateNotConfigured)
+
 	if configs.IsConfigured() {
-		appLifecycle.PublishEvent(model.EventConfigured, "main", nil)
+		appLifecycle.SetAppState(edgeapp.AppStateRunning, nil)
+		appLifecycle.SetConfigState(edgeapp.ConfigStateConfigured)
+		appLifecycle.SetAuthState(edgeapp.AuthStateAuthenticated)
 	}else {
+		appLifecycle.SetAppState(edgeapp.AppStateNotConfigured, nil)
 		log.Info("<main> Application is not configured.Waiting for configurations ")
 	}
-
 
 	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI, configs.MqttClientIdPrefix, configs.MqttUsername, configs.MqttPassword, true, 1, 1)
 	err = mqtt.Start()
@@ -155,7 +55,7 @@ func main() {
 	}
 
 	responder := discovery.NewServiceDiscoveryResponder(mqtt)
-	responder.RegisterResource(getDiscoveryResource())
+	responder.RegisterResource(model.GetDiscoveryResource())
 	responder.Start()
 
 	//"841CC054BE"
@@ -168,12 +68,13 @@ func main() {
 	fimpRouter.Start()
 
 	for {
-		appLifecycle.WaitForState("main", model.StateRunning)
+		appLifecycle.WaitForState("main", model.AppStateRunning)
 		conbeeClient.SetApiKeyAndHost(configs.ConbeeApiKey, configs.ConbeeUrl)
 		if err := conFimpRouter.Start(); err !=nil {
 			appLifecycle.PublishEvent(model.EventConfigError,"main",nil)
 		}else {
-			appLifecycle.WaitForState(model.StateConfiguring,"main")
+			appLifecycle.SetConnectionState(edgeapp.ConnStateConnected)
+			appLifecycle.WaitForState("main",model.AppStateNotConfigured)
 		}
 	}
 }

@@ -3,7 +3,7 @@ Description=Conbee zigbee adapter
 
 [Service]
 Type=simple
-ExecStart=/opt/thingsplex/conbee-ad/conbee-ad -c config.json
+ExecStart=/opt/thingsplex/conbee-ad/conbee-ad
 User=conbee-ad
 WorkingDirectory=/opt/thingsplex/conbee-ad
 Restart=always

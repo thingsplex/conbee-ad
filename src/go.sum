@@ -2,8 +2,11 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/buger/jsonparser v0.0.0-20170325175528-016ea00d7ed5 h1:6Tu4eB3VftkCMQ8sMbD2UEB5uY0iQlGV7su6kRuXGyA=
 github.com/buger/jsonparser v0.0.0-20170325175528-016ea00d7ed5/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
+github.com/buger/jsonparser v1.0.0 h1:etJTGF5ESxjI0Ic2UaLQs2LQQpa8G9ykQScukbh4L8A=
+github.com/buger/jsonparser v1.0.0/go.mod h1:tgcrVJ81GPSF0mz+0nu1Xaz0fazGPrmmJfJtxjbHhUQ=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d h1:Gg7yZurz19B+5VaCX/QwBO3Z3I/Rw/1DN76EDQhqw0M=
 github.com/eclipse/paho.mqtt.golang v0.0.0-20170413214049-c37a0a275c2d/go.mod h1:H9keYFcgq3Qr5OUJm/JZI/i6U7joQ8SYLhZwfeOo6Ts=
 github.com/eclipse/paho.mqtt.golang v1.2.0 h1:1F8mhG9+aO5/xpdtFkW4SxOJB67ukuDC3t2y2qayIX0=
@@ -14,6 +17,9 @@ github.com/futurehomeno/fimpgo v1.4.0 h1:p/sPrJdg5EPW+A1ZHSBBOzeJBUdFWmtfxkYEq5v
 github.com/futurehomeno/fimpgo v1.4.0/go.mod h1:HlCU8WBRMpYVmB/3MUh08VIDj+H95b9TQO6wVhUvrXY=
 github.com/futurehomeno/fimpgo v1.4.7 h1:halF9JTpbAFleKFWH/qkmtPT0eTfIWP9lGTpLI85mts=
 github.com/futurehomeno/fimpgo v1.4.7/go.mod h1:hVp7bMPj/wz4zejT6O0WCPCttKqSNn+72+n5Elu7wNI=
+github.com/futurehomeno/fimpgo v1.5.5 h1:R/TBf86BjG9PVKjp+vtuLf110TomTVz9hmo0GDWPWyU=
+github.com/futurehomeno/fimpgo v1.5.5/go.mod h1:Frx3cH9/XnUrIAWoUeOQGL97oFX19/TkMOxDkzkv9Wc=
+github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
@@ -53,3 +59,4 @@ gopkg.in/natefinch/lumberjack.v2 v2.0.0 h1:1Lc07Kr7qY4U2YPouBjpCLxpiyxIVoxqXgkXL
 gopkg.in/natefinch/lumberjack.v2 v2.0.0/go.mod h1:l0ndWWf7gzL7RNwBG7wST/UCcT4T24xpD6X8LsfU/+k=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

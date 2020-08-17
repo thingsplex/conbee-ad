@@ -2,9 +2,17 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/futurehomeno/fimpgo/edgeapp"
+	"github.com/futurehomeno/fimpgo/utils"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 )
+
+const ServiceName  = "conbee"
 
 type Configs struct {
 	path                  string
@@ -18,12 +26,25 @@ type Configs struct {
 	LogFile               string `json:"log_file"`
 	LogLevel              string `json:"log_level"`
 	LogFormat             string `json:"log_format"`
+	WorkDir               string `json:"-"`
 	ConfiguredAt          string `json:"configured_at"`
 	ConfiguredBy          string `json:"configured_by"`
 }
 
-func NewConfigs(path string) *Configs {
-	return &Configs{path:path}
+
+func NewConfigs(workDir string) *Configs {
+	conf := &Configs{WorkDir: workDir}
+	conf.path = filepath.Join(workDir,"data","config.json")
+	if !utils.FileExists(conf.path) {
+		log.Info("Config file doesn't exist.Loading default config")
+		defaultConfigFile := filepath.Join(workDir,"defaults","config.json")
+		err := utils.CopyFile(defaultConfigFile,conf.path)
+		if err != nil {
+			fmt.Print(err)
+			panic("Can't copy config file.")
+		}
+	}
+	return conf
 }
 
 func (cf * Configs) LoadFromFile() error {
@@ -50,6 +71,22 @@ func (cf *Configs) SaveToFile() error {
 	return err
 }
 
+func (cf *Configs) GetDataDir()string {
+	return filepath.Join(cf.WorkDir,"data")
+}
+
+func (cf *Configs) GetDefaultDir()string {
+	return filepath.Join(cf.WorkDir,"defaults")
+}
+
+func (cf * Configs) LoadDefaults()error {
+	configFile := filepath.Join(cf.WorkDir,"data","config.json")
+	os.Remove(configFile)
+	log.Info("Config file doesn't exist.Loading default config")
+	defaultConfigFile := filepath.Join(cf.WorkDir,"defaults","config.json")
+	return utils.CopyFile(defaultConfigFile,configFile)
+}
+
 func (cf *Configs) InitDefault() {
 	cf.InstanceAddress = "1"
 	cf.MqttServerURI = "tcp://localhost:1883"
@@ -64,4 +101,9 @@ func (cf *Configs) IsConfigured()bool {
 		return false
 	}
 	return true
+}
+
+type ConfigReport struct {
+	OpStatus string `json:"op_status"`
+	AppState edgeapp.AppStates `json:"app_state"`
 }

@@ -4,11 +4,20 @@ import (
 	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/alivinco/conbee-ad/model"
 	"github.com/futurehomeno/fimpgo"
+	"github.com/futurehomeno/fimpgo/edgeapp"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
 const ServiceName  = "conbee"
+
+type ConfigSetRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	ConbeeUrl string `json:"conbee_url"`
+}
 
 type FimpToConbeeRouter struct {
 	inboundMsgCh fimpgo.MessageCh
@@ -91,6 +100,27 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	case ServiceName:
 		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: ServiceName, ResourceAddress:"1"}
 		switch newMsg.Payload.Type {
+		case "cmd.app.get_manifest":
+			mode,err := newMsg.Payload.GetStringValue()
+			if err != nil {
+				log.Error("Incorrect request format ")
+				return
+			}
+			manifest := edgeapp.NewManifest()
+			err = manifest.LoadFromFile(filepath.Join(fc.configs.GetDefaultDir(),"app-manifest.json"))
+			if err != nil {
+				log.Error("Failed to load manifest file .Error :",err.Error())
+				return
+			}
+			if mode == "manifest_state" {
+				manifest.AppState = *fc.appLifecycle.GetAllStates()
+				manifest.ConfigState = fc.configs
+			}
+			msg := fimpgo.NewMessage("evt.app.manifest_report",model.ServiceName,fimpgo.VTypeObject,manifest,nil,nil,newMsg.Payload)
+			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
+				// if response topic is not set , sending back to default application event topic
+				fc.mqt.Publish(adr,msg)
+			}
 		case "cmd.auth.login":
 			reqVal, err := newMsg.Payload.GetStrMapValue()
 			status := "ok"
@@ -115,42 +145,49 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
 				fc.mqt.Publish(adr,msg)
 			}
-		case "cmd.system.get_connect_params":
-			val := map[string]string{"host":fc.configs.ConbeeUrl,"username":"","password":""}
-			msg := fimpgo.NewStrMapMessage("evt.system.connect_params_report",ServiceName,val,nil,nil,newMsg.Payload)
-			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
-				fc.mqt.Publish(adr,msg)
-			}
-		case "cmd.config.set":
-			fallthrough
-		case "cmd.system.connect":
-			reqVal, err := newMsg.Payload.GetStrMapValue()
-			var errStr string
-			status := "ok"
-			if err != nil {
-				log.Error("Incorrect login message ")
-				 errStr = err.Error()
-			}
-			host,_ := reqVal["host"]
-			username,_ := reqVal["username"]
-			password,_ := reqVal["password"]
-			fc.configs.ConbeeUrl = host
 
-			//if username != ""{
-			err = fc.conbeeClient.Login(username,password)
-			if err == nil {
-				fc.configs.ConbeeApiKey = fc.conbeeClient.ApiKey()
-				fc.appLifecycle.PublishEvent(model.EventConfigured,"fimp-conbee",nil)
-			}else {
-				log.Error("Login error :",err)
-			}
-			//}
+		case "cmd.app.disconnect":
+			fc.configs.ConbeeUrl = ""
+			fc.configs.ConbeeApiKey = ""
 			fc.configs.SaveToFile()
+			os.Exit(1)
+
+		case "cmd.config.extended_set":
+			conf := ConfigSetRequest{}
+			err :=newMsg.Payload.GetObjectValue(&conf)
 			if err != nil {
-				status = "error"
+				// TODO: This is an example . Add your logic here or remove
+				log.Error("Can't parse configuration object")
+				return
 			}
-			val := map[string]string{"status":status,"error":errStr}
-			msg := fimpgo.NewStrMapMessage("evt.system.connect_report",ServiceName,val,nil,nil,newMsg.Payload)
+			var status = "ok"
+			fc.configs.ConbeeUrl = conf.ConbeeUrl
+			if conf.ConbeeUrl != "" && conf.Password != "" {
+				fc.conbeeClient.SetApiKeyAndHost("", fc.configs.ConbeeUrl)
+				err = fc.conbeeClient.Login(conf.Username, conf.Password)
+				if err == nil {
+					fc.configs.ConbeeApiKey = fc.conbeeClient.ApiKey()
+					fc.appLifecycle.SetAppState(edgeapp.AppStateRunning, nil)
+					fc.appLifecycle.SetConfigState(edgeapp.ConfigStateConfigured)
+					fc.appLifecycle.SetAuthState(edgeapp.AuthStateAuthenticated)
+					fc.appLifecycle.SetConnectionState(edgeapp.ConnStateConnected)
+				} else {
+					log.Error("Login error :", err)
+					status = "error"
+				}
+				fc.configs.SaveToFile()
+				if err != nil {
+					status = "error"
+				}
+			}else {
+				status = "error"
+				log.Error("cmd.config.extended_set - either host or password are empty.Operation skipped")
+			}
+			configReport := model.ConfigReport{
+				OpStatus: status,
+				AppState:  *fc.appLifecycle.GetAllStates(),
+			}
+			msg := fimpgo.NewMessage("evt.app.config_report",model.ServiceName,fimpgo.VTypeObject,configReport,nil,nil,newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
 				fc.mqt.Publish(adr,msg)
 			}
