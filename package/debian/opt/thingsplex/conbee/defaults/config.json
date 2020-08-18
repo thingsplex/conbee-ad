@@ -6,7 +6,7 @@
   "mqtt_client_id_prefix": "connbee-ad",
   "conbee_url": "",
   "conbee_api_key": "",
-  "log_file": "/var/log/thingsplex/conbee-ad/conbee-ad.log",
+  "log_file": "/var/log/thingsplex/conbee/conbee.log",
   "log_level": "info",
   "log_format": "text",
   "configured_at": "",

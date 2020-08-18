@@ -150,6 +150,7 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			fc.configs.ConbeeUrl = ""
 			fc.configs.ConbeeApiKey = ""
 			fc.configs.SaveToFile()
+			fc.netService.SendAllExclusionReports()
 			os.Exit(1)
 
 		case "cmd.config.extended_set":
@@ -191,6 +192,9 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			if err := fc.mqt.RespondToRequest(newMsg.Payload,msg); err != nil {
 				fc.mqt.Publish(adr,msg)
 			}
+			if status == "ok" {
+				fc.netService.SendAllInclusionReports()
+			}
 
 		case "cmd.network.get_all_nodes":
 			fc.netService.SendListOfDevices()
@@ -223,6 +227,19 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				log.Error("Incorrect address")
 
 			}
+		case "cmd.log.set_level":
+			// Configure log level
+			level , err :=newMsg.Payload.GetStringValue()
+			if err != nil {
+				return
+			}
+			logLevel, err := log.ParseLevel(level)
+			if err == nil {
+				log.SetLevel(logLevel)
+				fc.configs.LogLevel = level
+				fc.configs.SaveToFile()
+			}
+			log.Info("Log level updated to = ",logLevel)
 
 		}
 		//

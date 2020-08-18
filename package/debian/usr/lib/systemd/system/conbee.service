@@ -3,9 +3,9 @@ Description=Conbee zigbee adapter
 
 [Service]
 Type=simple
-ExecStart=/opt/thingsplex/conbee-ad/conbee-ad
+ExecStart=/opt/thingsplex/conbee/conbee
 User=conbee-ad
-WorkingDirectory=/opt/thingsplex/conbee-ad
+WorkingDirectory=/opt/thingsplex/conbee
 Restart=always
 StandardOutput=null
 StandardError=null

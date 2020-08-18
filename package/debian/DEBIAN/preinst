@@ -17,9 +17,9 @@ set -e
 case "$1" in
 	install|upgrade)
 		# Stop service if vinculum is running
-		if [ -d /opt/thingsplex/conbee-ad/conbee-ad ]
+		if [ -d /opt/thingsplex/conbee/conbee ]
 		then
-			systemctl stop conbee-ad.service || true
+			systemctl stop conbee.service || true
 		fi
 	;;
 

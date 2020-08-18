@@ -73,14 +73,64 @@ func (ns *NetworkService) DeleteThing(deviceId string) error {
 		log.Error("Network managment failure .")
 		return errors.New("non success status code")
 	}
-	exclReport := map[string]string{"address":deviceId}
-	msg := fimpgo.NewMessage("evt.thing.exclusion_report", "conbee", fimpgo.VTypeObject, exclReport, nil, nil, nil)
+	ns.SendExclusionReport(deviceId)
+	return nil
+}
+func (ns *NetworkService) SendExclusionReport(thingId string){
+	val := fimptype.ThingExclusionReport{Address: thingId}
+	msg := fimpgo.NewMessage("evt.thing.exclusion_report", "conbee", fimpgo.VTypeObject, val, nil, nil, nil)
 	adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "conbee", ResourceAddress: "1"}
 	ns.mqt.Publish(&adr, msg)
-
-	return nil
-
 }
+
+func (ns *NetworkService) SendAllExclusionReports() error {
+	lights := map[string]conbee.Light{}
+	sensors := map[string]conbee.Sensor{}
+	_, err := ns.conbeeClient.SendConbeeRequest("GET", "lights", nil, &lights)
+	if err != nil {
+		log.Error("Can't get device descriptor . Err :", err)
+		return err
+	}
+
+	_, err = ns.conbeeClient.SendConbeeRequest("GET", "sensors", nil, &sensors)
+	if err != nil {
+		log.Error("Can't get device descriptor . Err :", err)
+		return err
+	}
+
+	for i := range lights {
+		ns.SendExclusionReport("l"+i)
+	}
+	for i := range sensors {
+		ns.SendExclusionReport("s"+i)
+	}
+	return nil
+}
+
+func (ns *NetworkService) SendAllInclusionReports() error {
+	lights := map[string]conbee.Light{}
+	sensors := map[string]conbee.Sensor{}
+	_, err := ns.conbeeClient.SendConbeeRequest("GET", "lights", nil, &lights)
+	if err != nil {
+		log.Error("Can't get device descriptor . Err :", err)
+		return err
+	}
+
+	_, err = ns.conbeeClient.SendConbeeRequest("GET", "sensors", nil, &sensors)
+	if err != nil {
+		log.Error("Can't get device descriptor . Err :", err)
+		return err
+	}
+
+	for i := range lights {
+		ns.SendInclusionReport("lights",i)
+	}
+	for i := range sensors {
+		ns.SendInclusionReport("sensors",i)
+	}
+	return nil
+}
+
 
 func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error {
 	if deviceId == "" {
@@ -339,7 +389,24 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		case "ZHAPresence":
 			presenceService.Address = presenceService.Address + serviceAddres
 			services = append(services,presenceService)
-
+		case "ZHAAlarm":
+			log.Debug("<net> ZHAAlarm not mapped")
+		case "ZHACarbonMonoxide":
+			log.Debug("<net> ZHACarbonMonoxide not mapped")
+		case "ZHAConsumption":
+			log.Debug("<net> ZHAConsumption not mapped")
+		case "ZHAFire":
+			log.Debug("<net> ZHAFire not mapped")
+		case "ZHAPower":
+			log.Debug("<net> ZHAPower not mapped")
+		case "ZHAPressure":
+			log.Debug("<net> ZHAPressure not mapped")
+		case "ZHAThermostat":
+			log.Debug("<net> ZHAThermostat not mapped")
+		case "ZHAVibration":
+			log.Debug("<net> ZHAVibration not mapped")
+		case "ZHAWater":
+			log.Debug("<net> ZHAWater not mapped")
 		}
 		powerSource = "battery"
 		deviceId = "s"+deviceId

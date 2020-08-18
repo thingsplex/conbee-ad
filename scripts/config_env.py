@@ -2,13 +2,13 @@ import sys
 
 def set_deb_control(version , arch):
     file_name  = "./package/debian/DEBIAN/control"
-    template = "Package: conbee-ad\n"
+    template = "Package: conbee\n"
     template+= "Version: "+version+"\n"
     template+= "Section: non-free/misc\n"
     template+= "Priority: optional\n"
     template+= "Architecture: "+arch+"\n"
     template+= "Maintainer: Aleksandrs Livincovs <aleksandrs.livincovs@gmail.com>\n"
-    template+= "Description: Conbee zigbee adapter.\n"
+    template+= "Description: Conbee zigbee adapter for futurehome.\n"
 
     f = open(file_name,"w")
     f.write(template)

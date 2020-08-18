@@ -20,7 +20,7 @@ func main() {
 	if workDir == "" {
 		workDir = "./"
 	} else {
-		fmt.Println("Work dir ", workDir)
+		fmt.Println("<main> Work dir ", workDir)
 	}
 	appLifecycle := model.NewAppLifecycle()
 	configs := model.NewConfigs(workDir)
@@ -49,9 +49,9 @@ func main() {
 	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI, configs.MqttClientIdPrefix, configs.MqttUsername, configs.MqttPassword, true, 1, 1)
 	err = mqtt.Start()
 	if err != nil {
-		log.Error("Failed to connect ot broker. Error:", err.Error())
+		log.Error("<main> Failed to connect ot broker. Error:", err.Error())
 	} else {
-		log.Info("Connected")
+		log.Info("<main> Connected to broker")
 	}
 
 	responder := discovery.NewServiceDiscoveryResponder(mqtt)
@@ -72,8 +72,10 @@ func main() {
 		conbeeClient.SetApiKeyAndHost(configs.ConbeeApiKey, configs.ConbeeUrl)
 		if err := conFimpRouter.Start(); err !=nil {
 			appLifecycle.PublishEvent(model.EventConfigError,"main",nil)
+			log.Info("<main> The app either is not configured or can't connect to remote API.")
 		}else {
 			appLifecycle.SetConnectionState(edgeapp.ConnStateConnected)
+			log.Info("<main> The app is successfully configured and is working.")
 			appLifecycle.WaitForState("main",model.AppStateNotConfigured)
 		}
 	}

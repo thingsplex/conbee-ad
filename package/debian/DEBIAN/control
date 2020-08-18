@@ -1,7 +1,7 @@
-Package: conbee-ad
-Version: 0.2.0
+Package: conbee
+Version: 0.3.1
 Section: non-free/misc
 Priority: optional
 Architecture: armhf
 Maintainer: Aleksandrs Livincovs <aleksandrs.livincovs@gmail.com>
-Description: Conbee zigbee adapter.
+Description: Conbee zigbee adapter for futurehome.

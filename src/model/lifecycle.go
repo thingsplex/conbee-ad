@@ -134,7 +134,7 @@ func (al *Lifecycle) SetAppState(currentState State, params map[string]string) {
 		al.configState = ConfigStateConfigured
 		al.authState = AuthStateAuthenticated
 	}
-	log.Debug("<sysEvt> New system state = ", currentState)
+	log.Info("<sysEvt> New system state = ", currentState)
 	for i := range al.systemEventBus {
 		select {
 		case al.systemEventBus[i] <- SystemEvent{Type: SystemEventTypeState, State: currentState, Info: "sys", Params: params}:
@@ -200,7 +200,7 @@ func (al *Lifecycle) processEvent(event SystemEvent) {
 
 // WaitForState blocks until target state is reached
 func (al *Lifecycle) WaitForState(subId string, targetState State) {
-	log.Debugf("<sysEvt> Waiting for state = %s , current state = %s", targetState, al.AppState())
+	log.Infof("<sysEvt> Waiting for state = %s , current state = %s", targetState, al.AppState())
 	if al.AppState() == targetState {
 		return
 	}
