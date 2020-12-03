@@ -1,8 +1,9 @@
-version="0.3.1"
+version="0.3.3"
 version_file=VERSION
 working_dir=$(shell pwd)
 arch="armhf"
 remote_host = "fh@cube.local"
+reprepo_host = ""
 
 clean:
 	-rm ./package/buid/conbee
@@ -56,5 +57,7 @@ remote-install : deb-arm upload
 run :
 	go run src/service.go -c testdata/var/config.json
 
+publish-reprepo:
+	scp package/build/conbee_$(version)_armhf.deb $(reprepo_host):~/apps
 
 .phony : clean

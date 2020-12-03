@@ -11,8 +11,48 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
+
+type Config struct {
+	Apiversion          string `json:"apiversion"`
+	Bridgeid            string `json:"bridgeid"`
+	Devicename          string `json:"devicename"`
+	Dhcp                bool   `json:"dhcp"`
+	Fwversion           string `json:"fwversion"`
+	Gateway             string `json:"gateway"`
+	Ipaddress           string `json:"ipaddress"`
+	Linkbutton          bool   `json:"linkbutton"`
+	Localtime           string `json:"localtime"`
+	Mac                 string `json:"mac"`
+	Modelid             string `json:"modelid"`
+	Name                string `json:"name"`
+	Netmask             string `json:"netmask"`
+	Networkopenduration int    `json:"networkopenduration"`
+	Ntp                 string `json:"ntp"`
+	Panid               int    `json:"panid"`
+	Portalservices      bool   `json:"portalservices"`
+	Proxyaddress        string `json:"proxyaddress"`
+	Proxyport           int    `json:"proxyport"`
+	Rfconnected         bool   `json:"rfconnected"`
+	Swupdate            struct {
+		Notify      bool   `json:"notify"`
+		Text        string `json:"text"`
+		Updatestate int    `json:"updatestate"`
+		URL         string `json:"url"`
+	} `json:"swupdate"`
+	Swversion          string `json:"swversion"`
+	Timeformat         string `json:"timeformat"`
+	Timezone           string `json:"timezone"`
+	UTC                string `json:"UTC"`
+	UUID               string `json:"uuid"`
+	Websocketnotifyall bool   `json:"websocketnotifyall"`
+	Websocketport      int    `json:"websocketport"`
+	Whitelist          struct {
+	} `json:"whitelist"`
+	Zigbeechannel int `json:"zigbeechannel"`
+}
 
 type Client struct {
 	host                 string
@@ -63,9 +103,22 @@ func (rc *Client) GetMsgStream() (chan ConbeeEvent, error) {
 }
 
 func (rc *Client) wsConnect()error {
-	u := url.URL{Scheme: "ws", Host: rc.host+":443", Path: ""}
+	// TODO : Load Websocket port from GET /api/<apikey>/config -> "websocketport": 8088,
+	port := 443
+	conf , err := rc.GetConbeeConfigs()
+	if err != nil {
+		log.Error("<conb-client> Failed to load config. Err:",err.Error())
+	}else {
+		if conf.Websocketport != 0 {
+			port = conf.Websocketport
+		}
+	}
+
+	hostS := strings.Split(rc.host,":")
+	host := fmt.Sprintf("%s:%d",hostS[0],port)
+	log.Info("<conb-client> Establishing WS connection to host : ",host)
+	u := url.URL{Scheme: "ws", Host: host, Path: ""}
 	log.Infof("<conb-client> Connecting to %s", u.String())
-	var err error
 	rc.wsClient, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Error("<conb-client> Dial error", err)
@@ -170,6 +223,16 @@ func (rc *Client) Login(username, password string) error {
 		}
 	}
 	return nil
+}
+
+func (rc *Client) GetConbeeConfigs() (*Config,error) {
+	config := Config {}
+	_, err := rc.SendConbeeRequest("GET", "config", nil, &config)
+	if err != nil {
+		log.Error("Can't get device descriptor . Err :", err)
+		return nil ,err
+	}
+	return &config,err
 }
 
 func (rc *Client) SendConbeeRequest(method, path string, request interface{}, response interface{}) (*http.Response, error) {
