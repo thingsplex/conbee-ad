@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -63,6 +64,8 @@ type Client struct {
 	msgStream            chan ConbeeEvent
 	connectionRetryCounter int
 	maxConnRetry           int
+	fullState            FullState
+	stateMux             sync.RWMutex
 }
 
 func (rc *Client) ApiKey() string {
@@ -80,6 +83,7 @@ func NewClient(conbeeBaseURL string) *Client {
 	cb.httpClient = &http.Client{Timeout: 15 * time.Second}
 	cb.msgStream = make(chan ConbeeEvent,10)
 	cb.maxConnRetry = 2000
+	cb.stateMux = sync.RWMutex{}
 	return cb
 }
 
@@ -103,7 +107,6 @@ func (rc *Client) GetMsgStream() (chan ConbeeEvent, error) {
 }
 
 func (rc *Client) wsConnect()error {
-	// TODO : Load Websocket port from GET /api/<apikey>/config -> "websocketport": 8088,
 	port := 443
 	conf , err := rc.GetConbeeConfigs()
 	if err != nil {
@@ -126,6 +129,7 @@ func (rc *Client) wsConnect()error {
 		return  err
 	}
 	rc.isWsConnectionActive = true
+	rc.LoadFullState()
 	log.Info("<conb-client> Connected ")
 	return nil
 }
@@ -235,6 +239,17 @@ func (rc *Client) GetConbeeConfigs() (*Config,error) {
 	return &config,err
 }
 
+func (rc *Client) LoadFullState() error {
+	_, err := rc.SendConbeeRequest("GET", "", nil, &rc.fullState)
+	if err != nil {
+		log.Error("Can't load full state . Err :", err)
+	}else {
+		log.Debug("Full state loaded successfully.")
+	}
+
+	return err
+}
+
 func (rc *Client) SendConbeeRequest(method, path string, request interface{}, response interface{}) (*http.Response, error) {
 	httpClient := &http.Client{}
 	var buf io.ReadWriter
@@ -266,5 +281,26 @@ func (rc *Client) SendConbeeRequest(method, path string, request interface{}, re
 		err = json.NewDecoder(resp.Body).Decode(response)
 	}
 	return resp, err
+
+}
+
+func (rc *Client) GetLightById(id string)Light {
+	rc.stateMux.RLock()
+	defer rc.stateMux.RUnlock()
+	if rc.fullState.Lights == nil {
+		return Light{}
+	}
+	l , _ := rc.fullState.Lights[id]
+	return l
+}
+
+func (rc *Client) GetSensorById(id string)Sensor {
+	rc.stateMux.RLock()
+	defer rc.stateMux.RUnlock()
+	if rc.fullState.Sensors == nil {
+		return Sensor{}
+	}
+	l , _ := rc.fullState.Sensors[id]
+	return l
 
 }

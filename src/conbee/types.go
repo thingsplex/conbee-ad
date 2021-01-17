@@ -1,5 +1,16 @@
 package conbee
 
+const (
+	DeviceTypeWindowCoveringController = "Window covering controller"
+	DeviceTypeWindowCoveringDevice     = "Window covering device"
+)
+
+type FullState struct {
+	Lights  map[string]Light       `json:"lights"`
+	Sensors map[string]Sensor      `json:"sensors"`
+	Groups  map[string]interface{} `json:"groups"`
+}
+
 type ConbeeEvent struct {
 	MsgType      string                 `json:"t"`
 	EventType    string                 `json:"e"`
@@ -29,6 +40,9 @@ type Light struct {
 		Reachable bool      `json:"reachable"`
 		Sat       int       `json:"sat"`
 		Xy        []float64 `json:"xy"`
+		Open 	  *bool `json:"open,omitempty"`
+		Stop      *bool `json:"stop,omitempty"`
+		Lift      *int  `json:"lift,omitempty"`
 	} `json:"state"`
 	Swversion string `json:"swversion"`
 	Type      string `json:"type"`
@@ -37,7 +51,7 @@ type Light struct {
 
 type Sensor struct {
 	Config struct {
-		On        bool `json:"on"`
+		On        bool  `json:"on"`
 		Reachable *bool `json:"reachable"`
 		Battery   *int  `json:"battery"`
 	} `json:"config"`
@@ -57,4 +71,10 @@ type Sensor struct {
 type ConnbeeLightRequest struct {
 	On  bool `json:"on"`
 	Bri int  `json:"bri,omitempty"`
+}
+
+type WindowCoveringRequest struct {
+	Open *bool `json:"open,omitempty"`
+	Stop *bool `json:"stop,omitempty"`
+	Lift *int  `json:"lift,omitempty"`
 }

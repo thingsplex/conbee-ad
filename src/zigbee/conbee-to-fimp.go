@@ -88,9 +88,9 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 	}
 
 	for k := range evt.State {
+		log.Debugf("Conn state from node node = %s, type = %s,subtype = %s",evt.Id,evt.ResourceType,k)
 		if evt.ResourceType == "sensors" {
 			serviceAddress = "s"+evt.Id+"_0"
-			log.Debug("state ",k)
 			switch k{
 			case "open":
 				val,ok := evt.State[k].(bool)

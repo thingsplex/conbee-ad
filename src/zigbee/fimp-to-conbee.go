@@ -56,16 +56,30 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	addr := strings.Replace(newMsg.Addr.ServiceAddress,"_0","",1)
 	switch newMsg.Payload.Service {
 	case "out_lvl_switch" :
+
 		addr = strings.Replace(addr,"l","",1)
 		switch newMsg.Payload.Type {
 		case "cmd.binary.set":
 			val,_ := newMsg.Payload.GetBoolValue()
-			req := conbee.ConnbeeLightRequest{On:val}
+			dev := fc.conbeeClient.GetLightById(addr)
+			var req interface{}
+			if dev.Type == conbee.DeviceTypeWindowCoveringController || dev.Type == conbee.DeviceTypeWindowCoveringDevice {
+				req = conbee.WindowCoveringRequest{Open: &val}
+			}else {
+				req = conbee.ConnbeeLightRequest{On:val}
+			}
+
 			var resp interface{}
 			log.Debug("Request ",req)
 			_ , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
 			if err != nil {
 				log.Error("Response error ",err)
+			}else {
+				if dev.Type == conbee.DeviceTypeWindowCoveringController || dev.Type == conbee.DeviceTypeWindowCoveringDevice {
+					msg := fimpgo.NewBoolMessage("evt.binary.report", "out_lvl_switch", val, nil, nil, nil)
+					adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "conbee", ResourceAddress: fc.configs.InstanceAddress, ServiceName: "out_lvl_switch", ServiceAddress: newMsg.Addr.ServiceAddress}
+					fc.mqt.Publish(adr, msg)
+				}
 			}
 			//log.Debug("Status code = ",respH.StatusCode)
 		case "cmd.lvl.set":
@@ -73,13 +87,36 @@ func (fc *FimpToConbeeRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			// 255 - 100%
 			// A   - x%
 			//x = A * 100 / 255
-
-			req := conbee.ConnbeeLightRequest{Bri:int(val),On:true}
+			var req interface{}
+			dev := fc.conbeeClient.GetLightById(addr)
+			if dev.Type == conbee.DeviceTypeWindowCoveringController || dev.Type == conbee.DeviceTypeWindowCoveringDevice {
+				lvl := int(val)
+				req = conbee.WindowCoveringRequest{Lift: &lvl}
+			}else {
+				req = conbee.ConnbeeLightRequest{Bri:int(val),On:true}
+			}
 			var resp interface{}
 			log.Debug("Request ",req)
 			_ , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
 			if err != nil {
 				log.Error("Response error ",err)
+			}else {
+				if dev.Type == conbee.DeviceTypeWindowCoveringController || dev.Type == conbee.DeviceTypeWindowCoveringDevice {
+					msg := fimpgo.NewIntMessage("evt.lvl.report", "out_lvl_switch", val, nil, nil, nil)
+					adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "conbee", ResourceAddress: fc.configs.InstanceAddress, ServiceName: "out_lvl_switch", ServiceAddress: newMsg.Addr.ServiceAddress}
+					fc.mqt.Publish(adr, msg)
+				}
+			}
+		case "cmd.lvl.stop":
+			dev := fc.conbeeClient.GetLightById(addr)
+			if dev.Type == conbee.DeviceTypeWindowCoveringController || dev.Type == conbee.DeviceTypeWindowCoveringDevice {
+				state := true
+				req := conbee.WindowCoveringRequest{Stop: &state}
+				var resp interface{}
+				_ , err :=  fc.conbeeClient.SendConbeeRequest("PUT","lights/"+addr+"/state",req,resp)
+				if err != nil {
+					log.Error("Response error ",err)
+				}
 			}
 		}
 
