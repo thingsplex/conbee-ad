@@ -1,65 +1,82 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/alivinco/conbee-ad/conbee"
 	"github.com/alivinco/conbee-ad/model"
+	"github.com/alivinco/conbee-ad/utils"
 	"github.com/alivinco/conbee-ad/zigbee"
+	"github.com/futurehomeno/fimpgo"
+	"github.com/futurehomeno/fimpgo/discovery"
+	"github.com/futurehomeno/fimpgo/edgeapp"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"io/ioutil"
 )
 
-func SetupLog(logfile string, level string, logFormat string) {
-	if logFormat == "json" {
-		log.SetFormatter(&log.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05.999"})
-	} else {
-		log.SetFormatter(&log.TextFormatter{FullTimestamp: true, ForceColors: true, TimestampFormat: "2006-01-02T15:04:05.999"})
-	}
-
-	logLevel, err := log.ParseLevel(level)
-	if err == nil {
-		log.SetLevel(logLevel)
-	} else {
-		log.SetLevel(log.DebugLevel)
-	}
-
-	if logfile != "" {
-		l := lumberjack.Logger{
-			Filename:   logfile,
-			MaxSize:    5, // megabytes
-			MaxBackups: 2,
-		}
-		log.SetOutput(&l)
-	}
-
-}
-
 func main() {
-	configs := model.Configs{}
-	var configFile string
-	flag.StringVar(&configFile, "c", "", "Config file")
+	var workDir string
+	flag.StringVar(&workDir, "c", "", "Work dir")
 	flag.Parse()
-	if configFile == "" {
-		configFile = "./config.json"
+	if workDir == "" {
+		workDir = "./"
 	} else {
-		fmt.Println("Loading configs from file ", configFile)
+		fmt.Println("<main> Work dir ", workDir)
 	}
-	configFileBody, err := ioutil.ReadFile(configFile)
-	err = json.Unmarshal(configFileBody, &configs)
+	appLifecycle := model.NewAppLifecycle()
+	configs := model.NewConfigs(workDir)
+	err := configs.LoadFromFile()
 	if err != nil {
 		fmt.Print(err)
 		panic("Can't load config file.")
 	}
+	utils.SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
+	log.Info("-------------- Starting conbee-ad ----------------")
 
-	SetupLog(configs.LogFile, configs.LogLevel, configs.LogFormat)
-	log.Info("--------------Starting ThingsPlexServiceTemplate----------------")
+	appLifecycle.SetAppState(edgeapp.AppStateStarting, nil)
+	appLifecycle.SetConnectionState(edgeapp.ConnStateDisconnected)
+	appLifecycle.SetAuthState(edgeapp.AuthStateNotAuthenticated)
+	appLifecycle.SetConfigState(edgeapp.ConfigStateNotConfigured)
 
-	conFimpRouter := zigbee.NewConbeeToFimpRouter("legohome.local:443","841CC054BE")
-	conFimpRouter.Start()
+	if configs.IsConfigured() {
+		appLifecycle.SetAppState(edgeapp.AppStateRunning, nil)
+		appLifecycle.SetConfigState(edgeapp.ConfigStateConfigured)
+		appLifecycle.SetAuthState(edgeapp.AuthStateAuthenticated)
+	}else {
+		appLifecycle.SetAppState(edgeapp.AppStateNotConfigured, nil)
+		log.Info("<main> Application is not configured.Waiting for configurations ")
+	}
 
-	select {
+	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI, configs.MqttClientIdPrefix, configs.MqttUsername, configs.MqttPassword, true, 1, 1)
+	err = mqtt.Start()
+	if err != nil {
+		log.Error("<main> Failed to connect ot broker. Error:", err.Error())
+	} else {
+		log.Info("<main> Connected to broker")
+	}
 
+	responder := discovery.NewServiceDiscoveryResponder(mqtt)
+	responder.RegisterResource(model.GetDiscoveryResource())
+	responder.Start()
+
+	//"841CC054BE"
+	// "legohome.local:443"
+	conbeeClient := conbee.NewClient(configs.ConbeeUrl)
+	netService := zigbee.NewNetworkService(mqtt, conbeeClient)
+	fimpRouter := zigbee.NewFimpToConbeeRouter(mqtt, conbeeClient, netService ,appLifecycle,configs)
+	conFimpRouter := zigbee.NewConbeeToFimpRouter(mqtt, conbeeClient, netService, configs.InstanceAddress)
+
+	fimpRouter.Start()
+
+	for {
+		appLifecycle.WaitForState("main", model.AppStateRunning)
+		conbeeClient.SetApiKeyAndHost(configs.ConbeeApiKey, configs.ConbeeUrl)
+		if err := conFimpRouter.Start(); err !=nil {
+			appLifecycle.PublishEvent(model.EventConfigError,"main",nil)
+			log.Info("<main> The app either is not configured or can't connect to remote API.")
+		}else {
+			appLifecycle.SetConnectionState(edgeapp.ConnStateConnected)
+			log.Info("<main> The app is successfully configured and is working.")
+			appLifecycle.WaitForState("main",model.AppStateNotConfigured)
+		}
 	}
 }

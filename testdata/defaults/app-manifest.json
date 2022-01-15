@@ -1,0 +1,199 @@
+{
+  "configs":[
+    {
+      "id": "conbee_url",
+      "label": {"en": "Conbee IP or hostname"},
+      "val_t": "string",
+      "ui": {
+        "type": "input_string"
+      },
+      "val": {
+        "default": ""
+      },
+      "is_required": true,
+      "hidden":false,
+      "config_point": "any"
+    },
+    {
+      "id": "username",
+      "label": {"en": "Username"},
+      "val_t": "string",
+      "ui": {
+        "type": "input_string"
+      },
+      "val": {
+        "default": ""
+      },
+      "is_required": true,
+      "hidden":false,
+      "config_point": "any"
+    },
+    {
+      "id": "password",
+      "label": {"en": "password"},
+      "val_t": "string",
+      "ui": {
+        "type": "input_string"
+      },
+      "val": {
+        "default": ""
+      },
+      "is_required": true,
+      "hidden":false,
+      "config_point": "any"
+    }
+
+  ],
+  "ui_buttons": [
+    {
+      "id":"disconnect",
+      "label": {"en": "Disconnect"},
+      "req": {
+        "serv":"conbee",
+        "intf_t": "cmd.app.disconnect",
+        "val": "full"
+      },
+      "hidden":false
+    }
+  ],
+  "ui_blocks": [
+    {
+      "id": "1",
+      "header": {"en": "App configuration"},
+      "text": {"en": "Configure connection to conbee api"},
+      "configs": ["conbee_url","username","password"],
+      "buttons": [],
+      "footer": {"en": ""},
+      "hidden":false
+    },
+    {
+      "id": "1",
+      "header": {"en": "Disconnect"},
+      "text": {"en": "Disconnect from conbee and remove all devices"},
+      "configs": [],
+      "buttons": ["disconnect"],
+      "footer": {"en": ""},
+      "hidden":false
+    }
+  ],
+  "auth": {
+    "type": "password",
+    "code_grant_login_page_url" : "",
+    "redirect_url": "",
+    "client_id": "",
+    "secret": "",
+    "partner_id": "",
+    "auth_endpoint": ""
+  },
+  "init_flow":["connect"],
+  "services": [
+    {
+      "name": "conbee",
+      "alias": "Network managment",
+      "address": "/rt:ad/rn:conbee/ad:1",
+      "interfaces": [
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.app.get_manifest",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.system.sync",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.system.reconnect",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "out",
+          "msg_t": "evt.app.manifest_report",
+          "val_t": "object",
+          "ver": "1"
+        },{
+          "intf_t": "out",
+          "msg_t": "cmd.app.get_full_state",
+          "val_t": "string",
+          "ver": "1"
+        },{
+          "intf_t": "out",
+          "msg_t": "cmd.app.full_state_report",
+          "val_t": "object",
+          "ver": "1"
+        },{
+          "intf_t": "in",
+          "msg_t": "cmd.config.extended_set",
+          "val_t": "str_map",
+          "ver": "1"
+        },{
+          "intf_t": "in",
+          "msg_t": "cmd.auth.set_tokens",
+          "val_t": "str_map",
+          "ver": "1"
+        },
+        {
+          "intf_t": "out",
+          "msg_t": "evt.auth.login_report",
+          "val_t": "string",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.network.get_all_nodes",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.thing.get_inclusion_report",
+          "val_t": "string",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.thing.inclusion",
+          "val_t": "string",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.thing.delete",
+          "val_t": "string",
+          "ver": "1"
+        },
+        {
+          "intf_t": "out",
+          "msg_t": "evt.thing.inclusion_report",
+          "val_t": "object",
+          "ver": "1"
+        },
+        {
+          "intf_t": "out",
+          "msg_t": "evt.thing.exclusion_report",
+          "val_t": "object",
+          "ver": "1"
+        },
+        {
+          "intf_t": "out",
+          "msg_t": "evt.network.all_nodes_report",
+          "val_t": "object",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.log.set_level",
+          "val_t": "string",
+          "ver": "1"
+        }
+      ]
+    }
+  ],
+  "app_state": {
+
+  }
+}
