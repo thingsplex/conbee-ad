@@ -143,6 +143,21 @@ func (cr *ConbeeToFimpRouter) mapSensorEvent(evt *conbee.ConbeeEvent) {
 				val = val/100
 				msg = fimpgo.NewFloatMessage("evt.sensor.report", "sensor_humid", val,  map[string]string{"unit":"%"}, nil, nil)
 				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "conbee", ResourceAddress: cr.instanceId, ServiceName: "sensor_humid", ServiceAddress: serviceAddress}
+			case "vibration":
+				val, ok := evt.State[k].(bool)
+				if !ok {
+					log.Debug("can't parse the vibration value")
+					continue
+				}
+				var status string
+				if val {
+					status = "activ"
+				} else {
+					status = "deactiv"
+				}
+				valS := map[string]string{"event": "tamper_force_open", "status": status}
+				msg = fimpgo.NewStrMapMessage("evt.alarm.report", "alarm_burglar", valS, nil, nil, nil)
+				adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: "conbee", ResourceAddress: cr.instanceId, ServiceName: "alarm_burglar", ServiceAddress: serviceAddress}
 			}
 		}else if evt.ResourceType == "lights" {
 			serviceAddress = "l"+evt.Id+"_0"
