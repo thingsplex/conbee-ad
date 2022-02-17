@@ -2,8 +2,10 @@ package utils
 
 import (
 	"fmt"
+	"github.com/alivinco/conbee-ad/conbee"
 	"io"
 	"os"
+	"strings"
 )
 
 func FileExists(filename string) bool {

@@ -258,6 +258,21 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		Interfaces:       outLvlSwitchInterfaces,
 	}
 
+	windowCoveringService := fimptype.Service{
+		Name:    "out_lvl_switch",
+		Alias:   "Light control",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:out_lvl_switch/ad:",
+		Enabled: true,
+		Groups:  []string{"ch_0"},
+		Props: map[string]interface{}{
+			"max_lvl": 100,
+			"min_lvl": 0,
+		},
+		Tags:             nil,
+		PropSetReference: "",
+		Interfaces:       outLvlSwitchInterfaces,
+	}
+
 	tempSensorService := fimptype.Service{
 		Name:    "sensor_temp",
 		Alias:   "Temperature sensor",
@@ -350,8 +365,14 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 			swVersion = lightDeviceDescriptor.Swversion
 			serialNr = lightDeviceDescriptor.Uniqueid
 			serviceAddres := "l"+deviceId+"_0"
-			outLvlSwitchService.Address = outLvlSwitchService.Address + serviceAddres
-			services = append(services,outLvlSwitchService)
+
+			if !utils.IsWindowCoveringType(lightDeviceDescriptor) {
+				outLvlSwitchService.Address = outLvlSwitchService.Address + serviceAddres
+				services = append(services, outLvlSwitchService)
+			} else {
+				windowCoveringService.Address = windowCoveringService.Address + serviceAddres
+				services = append(services, windowCoveringService)
+			}
 		}
 		powerSource = "ac"
 		deviceId = "l"+deviceId

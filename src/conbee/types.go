@@ -3,6 +3,7 @@ package conbee
 const (
 	DeviceTypeWindowCoveringController = "Window covering controller"
 	DeviceTypeWindowCoveringDevice     = "Window covering device"
+	WindowCoveringDeviceWhitelist      = "lumi.curtain.acn002"
 )
 
 type FullState struct {
