@@ -224,6 +224,23 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		Version:   "1",
 	}}
 
+	alarmInterfaces := []fimptype.Interface{{
+		Type:      "in",
+		MsgType:   "cmd.alarm.get_report",
+		ValueType: "null",
+		Version:   "1",
+	}, {
+		Type:      "in",
+		MsgType:   "cmd.alarm.clear",
+		ValueType: "string",
+		Version:   "1",
+	}, {
+		Type:      "out",
+		MsgType:   "evt.alarm.report",
+		ValueType: "str_map",
+		Version:   "1",
+	}}
+
 	sceneInterfaces := []fimptype.Interface{{
 		Type:      "in",
 		MsgType:   "cmd.scene.set",
@@ -334,6 +351,20 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 		Interfaces:       presenceSensorInterfaces,
 	}
 
+	burglarService := fimptype.Service{
+		Name:    "alarm_burglar",
+		Alias:   "Burglar detection",
+		Address: "/rt:dev/rn:conbee/ad:1/sv:alarm_burglar/ad:",
+		Enabled: true,
+		Groups:  []string{"ch_0"},
+		Props: map[string]interface{}{
+			"sup_events": []string{"tamper_force_open"},
+		},
+		Tags:             nil,
+		PropSetReference: "",
+		Interfaces:       alarmInterfaces,
+	}
+
 	if deviceType == "lights" {
 		lightDeviceDescriptor := conbee.Light{}
 		resp , err := ns.conbeeClient.SendConbeeRequest("GET", "lights/"+deviceId, nil, &lightDeviceDescriptor)
@@ -388,7 +419,10 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 			services = append(services,contactService)
 		case "ZHAPresence":
 			presenceService.Address = presenceService.Address + serviceAddres
-			services = append(services,presenceService)
+			services = append(services, presenceService)
+		case "ZHAVibration":
+			burglarService.Address = burglarService.Address + serviceAddres
+			services = append(services, burglarService)
 		case "ZHAAlarm":
 			log.Debug("<net> ZHAAlarm not mapped")
 		case "ZHACarbonMonoxide":
@@ -403,8 +437,6 @@ func (ns *NetworkService) SendInclusionReport(deviceType, deviceId string) error
 			log.Debug("<net> ZHAPressure not mapped")
 		case "ZHAThermostat":
 			log.Debug("<net> ZHAThermostat not mapped")
-		case "ZHAVibration":
-			log.Debug("<net> ZHAVibration not mapped")
 		case "ZHAWater":
 			log.Debug("<net> ZHAWater not mapped")
 		}
